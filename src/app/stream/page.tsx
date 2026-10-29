@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import type { Document } from "@/lib/db/types";
+import { formatPublicationTime } from "@/lib/format/publication";
 
 export default function StreamPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -274,12 +275,14 @@ export default function StreamPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 text-[11px] text-neutral-400 font-mono">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-neutral-500" />
-                    Pub: {doc.published_at ? new Date(doc.published_at).toLocaleString("pl-PL") : "Brak daty"}
+                <div className="flex items-center gap-3 text-[11px] text-slate-300 font-mono">
+                  <span className="flex items-center gap-1.5 bg-cyan-950/60 border border-cyan-500/30 px-2.5 py-0.5 rounded text-cyan-200">
+                    <Clock className="w-3 h-3 text-cyan-400" />
+                    Godzina ukazania się:{" "}
+                    <strong className="text-white">
+                      {formatPublicationTime(doc.published_at)}
+                    </strong>
                   </span>
-                  <span>Pobrano: {new Date(doc.fetched_at).toLocaleTimeString("pl-PL")}</span>
                 </div>
               </div>
 

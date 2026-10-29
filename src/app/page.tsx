@@ -3,7 +3,6 @@ import { dbRepo } from "@/lib/db";
 import {
   Activity,
   Building2,
-  FileCheck2,
   Flame,
   Radio,
   ExternalLink,
@@ -13,9 +12,12 @@ import {
   Clock,
   ShieldAlert,
   GitFork,
-  Layers,
+  Newspaper,
+  Users,
 } from "lucide-react";
 import { DiffusionFlowGraph } from "@/components/DiffusionFlowGraph";
+import { formatPublicationTime } from "@/lib/format/publication";
+import { DualCommunicationZone } from "@/components/DualCommunicationZone";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -24,210 +26,210 @@ export default async function DashboardPage() {
   const stats = dbRepo.getDashboardStats();
   const events = dbRepo.getAllEvents();
   const alerts = dbRepo.getActiveAlerts();
-  const { documents: recentDocs } = dbRepo.getDocuments({ limit: 12 });
+  const { documents: allRecentDocs } = dbRepo.getDocuments({ limit: 250 });
 
-  // Pobieramy główny łańcuch dyfuzji dla najważniejszego wydarzenia
-  const topEvent = events[0] ? dbRepo.getEventById(events[0].id) : null;
+  const officialDocs = allRecentDocs.filter((d) => d.is_orlen_official);
+  const laborDocs = allRecentDocs.filter((d) => d.is_labor_signal && !d.is_orlen_official);
+  const externalMediaDocs = allRecentDocs.filter((d) => !d.is_orlen_official && !d.is_labor_signal);
+
+  // Wybieramy wydarzenie z najbogatszą ścieżką dyfuzji (np. LNG w Singapurze lub instalacje Płock)
+  const featuredEventMeta =
+    events.find((e) => e.id === "evt_cluster_upstream_norway_lng") || events[0];
+  const featuredEvent = featuredEventMeta ? dbRepo.getEventById(featuredEventMeta.id) : null;
 
   return (
-    <div className="space-y-6">
-      {/* Pasek nagłówkowy z indeksem iskrzeń i podsumowaniem */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-border pb-5">
+    <div className="space-y-8">
+      {/* Pasek statusowy na górze strony */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cyan-500/20 pb-5">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-white">
+          <h2 className="text-2xl font-bold tracking-tight text-white">
             Centrum sytuacyjne i radar wywiadowczy Grupy ORLEN
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            Bieżący nadzór nad komunikatami oficjalnymi, spółkami zależnymi, związkami zawodowymi oraz dyfuzją w mediach.
+            Zintegrowany obraz komunikatów wewnętrznych, aktywności związkowej oraz publikacji w mediach zewnętrznych wg godziny ich ukazania się.
           </p>
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
-          <div className="bg-surface-muted/80 px-3.5 py-1.5 rounded-lg border border-cyan-500/30 flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="bg-[#07162c] px-3.5 py-2 rounded-xl border border-cyan-500/30 flex items-center gap-2 shadow-sm">
+            <Clock className="w-4 h-4 text-cyan-400" />
             <span className="text-xs text-slate-200">
-              Ostatnia synchronizacja:{" "}
+              Najnowsza publikacja w bazie:{" "}
               <strong className="text-cyan-300 font-mono">
-                {stats.lastFetch ? new Date(stats.lastFetch).toLocaleTimeString("pl-PL") : "Brak danych"}
+                {stats.latestPublished
+                  ? formatPublicationTime(stats.latestPublished)
+                  : "Brak danych"}
               </strong>
             </span>
           </div>
 
-          <div className="bg-rose-950/50 border border-rose-500/40 px-3.5 py-1.5 rounded-lg flex items-center gap-2 text-rose-200 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
-            <Flame className="w-3.5 h-3.5 text-rose-400" />
-            <span className="text-xs font-medium">
-              Aktywne alerty: <strong>{stats.activeAlerts}</strong>
+          <Link
+            href="/alerts"
+            className="bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/45 px-3.5 py-2 rounded-xl flex items-center gap-2 text-rose-200 shadow-[0_0_20px_rgba(244,63,94,0.2)] transition-all"
+          >
+            <Flame className="w-4 h-4 text-rose-400" />
+            <span className="text-xs font-semibold">
+              Alerty wczesnego ostrzegania: <strong>{stats.activeAlerts}</strong>
             </span>
-          </div>
+          </Link>
         </div>
       </div>
 
-      {/* Bento Grid: Kluczowe metryki wywiadowcze w palecie Cyan/Navy */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-surface via-surface to-cyan-950/30 p-5 rounded-2xl border border-cyan-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between">
+      {/* 4 klarowne, jednoznaczne karty analityczne */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <div className="bg-gradient-to-br from-[#081a34] via-[#061326] to-[#040c18] p-5 rounded-2xl border border-cyan-400/35 shadow-[0_8px_30px_rgba(0,0,0,0.45)] flex flex-col justify-between relative overflow-hidden">
           <div className="flex items-center justify-between text-cyan-300">
-            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono">Zindeksowane publikacje</span>
-            <FileCheck2 className="w-4 h-4 text-cyan-400" />
+            <span className="text-xs font-semibold tracking-wide">
+              Oficjalne komunikaty ORLEN
+            </span>
+            <Building2 className="w-4 h-4 text-cyan-400" />
           </div>
-          <div className="mt-3">
-            <div className="text-3xl font-bold font-mono text-white drop-shadow-[0_0_10px_rgba(0,229,255,0.2)]">
-              {stats.totalDocs}
+          <div className="mt-4">
+            <div className="text-3xl font-bold font-mono text-white drop-shadow-[0_0_12px_rgba(0,229,255,0.25)]">
+              {stats.officialDocs}
             </div>
-            <div className="text-[11px] text-slate-300 mt-1">Ze wszystkich zweryfikowanych źródeł</div>
+            <div className="text-[11px] text-slate-300 mt-1.5">
+              Biuro Prasowe ORLEN S.A., raporty ESPI, Energa i OSGE
+            </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-surface via-surface to-sky-950/30 p-5 rounded-2xl border border-sky-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between">
-          <div className="flex items-center justify-between text-sky-300">
-            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono">Spółki i oficjalne ORLEN</span>
-            <Building2 className="w-4 h-4 text-sky-400" />
-          </div>
-          <div className="mt-3">
-            <div className="text-3xl font-bold font-mono text-sky-300">{stats.officialDocs}</div>
-            <div className="text-[11px] text-slate-300 mt-1">Centrala, PGNiG, Energa, ANWIL, OSGE, Unipetrol</div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-surface via-surface to-amber-950/25 p-5 rounded-2xl border border-amber-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between">
+        <div className="bg-gradient-to-br from-[#1c1508] via-[#12100c] to-[#060c18] p-5 rounded-2xl border border-amber-400/35 shadow-[0_8px_30px_rgba(0,0,0,0.45)] flex flex-col justify-between">
           <div className="flex items-center justify-between text-amber-300">
-            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono">Sygnały pracownicze</span>
-            <Activity className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-semibold tracking-wide">
+              Sygnały związkowe i załogi
+            </span>
+            <Users className="w-4 h-4 text-amber-400" />
           </div>
-          <div className="mt-3">
-            <div className="text-3xl font-bold font-mono text-amber-300">{stats.laborDocs}</div>
-            <div className="text-[11px] text-slate-300 mt-1">NSZZ Solidarność, MZZPRC, spory, BHP</div>
+          <div className="mt-4">
+            <div className="text-3xl font-bold font-mono text-amber-300">
+              {stats.laborDocs}
+            </div>
+            <div className="text-[11px] text-slate-300 mt-1.5">
+              NSZZ „Solidarność”, MZZPRC, spory zbiorowe i BHP
+            </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-surface via-surface to-emerald-950/25 p-5 rounded-2xl border border-emerald-500/30 shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex flex-col justify-between">
-          <div className="flex items-center justify-between text-emerald-300">
-            <span className="text-[11px] font-semibold uppercase tracking-wider font-mono">Aktywne konektory</span>
-            <Radio className="w-4 h-4 text-emerald-400" />
+        <div className="bg-gradient-to-br from-[#0a1632] via-[#071126] to-[#040b18] p-5 rounded-2xl border border-indigo-400/35 shadow-[0_8px_30px_rgba(0,0,0,0.45)] flex flex-col justify-between">
+          <div className="flex items-center justify-between text-indigo-300">
+            <span className="text-xs font-semibold tracking-wide">
+              Publikacje w mediach zewnętrznych
+            </span>
+            <Newspaper className="w-4 h-4 text-indigo-400" />
           </div>
-          <div className="mt-3">
-            <div className="text-3xl font-bold font-mono text-emerald-400">
-              {stats.activeSources} <span className="text-sm text-slate-400">/ {stats.totalSources}</span>
+          <div className="mt-4">
+            <div className="text-3xl font-bold font-mono text-indigo-200">
+              {stats.totalDocs - stats.officialDocs}
             </div>
-            <div className="text-[11px] text-slate-300 mt-1">100% sprawności źródeł publicznych</div>
+            <div className="text-[11px] text-slate-300 mt-1.5">
+              Prasa ogólnopolska, portale energetyczne i media lokalne
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-br from-[#1f0a14] via-[#140812] to-[#060b16] p-5 rounded-2xl border border-rose-500/35 shadow-[0_8px_30px_rgba(0,0,0,0.45)] flex flex-col justify-between">
+          <div className="flex items-center justify-between text-rose-300">
+            <span className="text-xs font-semibold tracking-wide">
+              Wykryte ogniska i tematy
+            </span>
+            <Flame className="w-4 h-4 text-rose-400" />
+          </div>
+          <div className="mt-4">
+            <div className="text-3xl font-bold font-mono text-rose-400">
+              {stats.totalEvents}{" "}
+              <span className="text-xs font-normal text-slate-400">
+                ({stats.activeAlerts} pilnych)
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-300 mt-1.5">
+              Ciągły monitoring 43 aktywnych kanałów informacyjnych
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Sekcja Graficznej Ścieżki Przepływu na żywo (Komunikat -> Publikacje) */}
-      {topEvent && topEvent.documents.length > 0 && (
-        <div className="bg-surface/95 rounded-2xl border border-cyan-500/35 p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)] space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-surface-border pb-3">
-            <div className="flex items-center gap-2.5">
-              <GitFork className="w-4 h-4 text-cyan-400" />
-              <h3 className="text-sm font-semibold text-white">
-                Ścieżka dyfuzji wiodącego tematu:{" "}
-                <span className="text-cyan-300">{topEvent.title}</span>
+      {/* Graficzna, animowana ścieżka od komunikatu do publikacji prasowych */}
+      {featuredEvent && featuredEvent.documents.length > 0 && (
+        <div className="bg-gradient-to-b from-[#07162c]/95 to-[#040d1a]/95 rounded-2xl border border-cyan-400/40 p-6 shadow-[0_12px_40px_rgba(0,0,0,0.55)] space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-cyan-500/20 pb-4">
+            <div>
+              <div className="flex items-center gap-2 text-cyan-300 text-xs font-mono uppercase tracking-wider mb-1">
+                <GitFork className="w-4 h-4 text-cyan-400" />
+                Ścieżka przenikania informacji (Komunikat → Publikacje prasowe)
+              </div>
+              <h3 className="text-base font-bold text-white">
+                {featuredEvent.title}
               </h3>
             </div>
             <Link
               href="/diffusion"
-              className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1 font-medium"
+              className="px-3.5 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-xs text-cyan-200 hover:text-white flex items-center gap-1.5 font-semibold self-start lg:self-center transition-all"
             >
-              Pełna matryca przepływu ({events.length} łańcuchów) <ChevronRight className="w-3.5 h-3.5" />
+              Zobacz wszystkie ścieżki przepływu ({events.length}) <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
 
-          <DiffusionFlowGraph documents={topEvent.documents} maxNodes={4} />
+          <DiffusionFlowGraph documents={featuredEvent.documents} maxNodes={4} />
         </div>
       )}
 
-      {/* Alerty Kryzysowe */}
-      {alerts.length > 0 && (
-        <div className="bg-surface/95 rounded-2xl border border-rose-500/35 p-5 space-y-3.5 shadow-[0_8px_30px_rgba(0,0,0,0.35)]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-rose-400 font-semibold text-xs tracking-wider uppercase font-mono">
-              <ShieldAlert className="w-4 h-4" />
-              Alerty wczesnego ostrzegania (Sparks Index)
-            </div>
-            <Link href="/alerts" className="text-xs text-rose-300 hover:text-white flex items-center gap-1">
-              Wszystkie alerty ({alerts.length}) <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {alerts.slice(0, 6).map((alert) => (
-              <div
-                key={alert.id}
-                className="bg-rose-950/20 border border-rose-500/30 p-4 rounded-xl flex flex-col justify-between hover:border-rose-400/50 transition-colors"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] font-mono uppercase bg-rose-500/20 border border-rose-500/40 text-rose-200 px-2 py-0.5 rounded font-bold">
-                      {alert.severity}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      {new Date(alert.created_at).toLocaleTimeString("pl-PL")}
-                    </span>
-                  </div>
-                  <h4 className="text-xs font-semibold text-white leading-snug">{alert.title}</h4>
-                  <p className="text-[11px] text-slate-300 mt-1.5 leading-relaxed line-clamp-3">{alert.message}</p>
-                </div>
-                {alert.evidence_list && alert.evidence_list.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-rose-500/20 text-[10px] text-slate-400 line-clamp-1">
-                    Dowód: {alert.evidence_list[0]}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Synchronizowany rozdział: Komunikacja Wewnętrzna i Korporacyjna vs Media Zewnętrzne */}
+      <DualCommunicationZone
+        officialDocs={officialDocs}
+        laborDocs={laborDocs}
+        mediaDocs={externalMediaDocs}
+      />
 
-      {/* Główny układ Bento: Wydarzenia vs Najnowszy Strumień */}
+      {/* Dolna sekcja: Wątki tematyczne (Sparks Index) oraz Alerty Kryzysowe */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Kolumna lewa: Zagregowane Wydarzenia i Iskrzenia (7 cols) */}
+        {/* Lewa kolumna: Zagregowane wątki (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-tight text-white flex items-center gap-2">
+            <h3 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-cyan-400" />
-              Zagregowane klastry tematyczne i dynamika iskrzeń ({events.length})
+              Monitorowane wątki tematyczne i wskaźnik napięcia (Sparks Score)
             </h3>
             <Link
               href="/events"
-              className="text-xs text-cyan-300 hover:text-white flex items-center gap-1 transition-colors"
+              className="text-xs text-cyan-300 hover:text-white flex items-center gap-1 font-medium"
             >
-              Wszystkie wydarzenia <ChevronRight className="w-3.5 h-3.5" />
+              Pełna lista ({events.length}) <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           <div className="space-y-3">
-            {events.map((evt) => (
+            {events.slice(0, 6).map((evt) => (
               <Link
                 key={evt.id}
                 href={`/events/${evt.id}`}
-                className="block bg-surface hover:bg-surface-muted/80 transition-all p-4 rounded-xl border border-surface-border hover:border-cyan-500/40 shadow-sm"
+                className="block bg-surface/90 hover:bg-surface-muted transition-all p-4 rounded-2xl border border-surface-border hover:border-cyan-400/50 shadow-md"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <span className="text-[10px] font-mono uppercase bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 rounded text-cyan-300">
-                        {evt.event_stage.replace("_", " ")}
-                      </span>
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
                       {evt.has_orlen_responded ? (
-                        <span className="text-[10px] font-mono uppercase bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 px-2 py-0.5 rounded">
-                          Stanowisko ORLEN
+                        <span className="text-[10px] font-mono uppercase bg-cyan-950/80 border border-cyan-400/40 text-cyan-200 px-2 py-0.5 rounded">
+                          Wydano oficjalny komunikat ORLEN
                         </span>
                       ) : (
-                        <span className="text-[10px] font-mono uppercase bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
-                          Brak stanowiska
+                        <span className="text-[10px] font-mono uppercase bg-slate-800/90 border border-white/10 text-slate-300 px-2 py-0.5 rounded">
+                          Tylko doniesienia zewnętrzne
                         </span>
                       )}
-                      <span className="text-[11px] text-slate-400 font-mono">
-                        {new Date(evt.last_signal_at).toLocaleTimeString("pl-PL")}
+                      <span className="text-[11px] text-slate-300 font-mono flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-cyan-400" />
+                        Ostatnia publikacja: {formatPublicationTime(evt.last_signal_at)}
                       </span>
                     </div>
-                    <h4 className="text-sm font-semibold text-white group-hover:text-cyan-300">{evt.title}</h4>
+                    <h4 className="text-sm font-bold text-white">{evt.title}</h4>
                     {evt.summary && (
-                      <p className="text-xs text-slate-300 mt-1 leading-relaxed line-clamp-2">{evt.summary}</p>
+                      <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">{evt.summary}</p>
                     )}
                   </div>
 
-                  <div className="text-right flex flex-col items-end flex-shrink-0">
-                    <div className="text-[10px] uppercase font-mono text-slate-400">Sparks Score</div>
+                  <div className="text-right flex flex-col items-end flex-shrink-0 bg-[#040b16] px-3 py-2 rounded-xl border border-white/10">
+                    <div className="text-[9px] uppercase font-mono text-slate-400">Napięcie</div>
                     <div
                       className={`text-xl font-bold font-mono ${
                         evt.sparks_score >= 60
@@ -247,68 +249,42 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Kolumna prawa: Ostatnio zindeksowane publikacje (5 cols) */}
+        {/* Prawa kolumna: Alerty Wczesnego Ostrzegania (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-tight text-white flex items-center gap-2">
-              <Radio className="w-4 h-4 text-cyan-400" />
-              Najnowsze publikacje w strumieniu
+            <h3 className="text-base font-bold tracking-tight text-white flex items-center gap-2">
+              <ShieldAlert className="w-4 h-4 text-rose-400" />
+              Aktywne alerty wczesnego ostrzegania
             </h3>
             <Link
-              href="/stream"
-              className="text-xs text-cyan-300 hover:text-white flex items-center gap-1 transition-colors"
+              href="/alerts"
+              className="text-xs text-rose-300 hover:text-white flex items-center gap-1 font-medium"
             >
-              Pełny strumień ({stats.totalDocs}) <ChevronRight className="w-3.5 h-3.5" />
+              Wszystkie ({alerts.length}) <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           <div className="space-y-3">
-            {recentDocs.slice(0, 8).map((doc) => (
+            {alerts.slice(0, 5).map((alert) => (
               <div
-                key={doc.id}
-                className="bg-surface p-3.5 rounded-xl border border-surface-border hover:border-cyan-500/35 transition-colors flex flex-col justify-between"
+                key={alert.id}
+                className="bg-gradient-to-br from-rose-950/30 via-[#120914] to-[#060c18] border border-rose-500/35 p-4 rounded-2xl space-y-2 shadow-md"
               >
-                <div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
-                    <span className="font-medium text-cyan-300 flex items-center gap-1.5 truncate max-w-[220px]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 flex-shrink-0" />
-                      {doc.source_name}
-                    </span>
-                    <span className="font-mono text-[10px] text-slate-400">
-                      {doc.published_at ? new Date(doc.published_at).toLocaleTimeString("pl-PL") : "Brak daty"}
-                    </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase bg-rose-500/20 border border-rose-500/40 text-rose-200 px-2 py-0.5 rounded font-bold">
+                    Poziom: {alert.severity === "critical" ? "Krytyczny" : "Podwyższony"}
+                  </span>
+                  <span className="text-[11px] text-slate-300 font-mono">
+                    {formatPublicationTime(alert.created_at)}
+                  </span>
+                </div>
+                <h4 className="text-xs font-bold text-white leading-snug">{alert.title}</h4>
+                <p className="text-[11px] text-slate-300 leading-relaxed line-clamp-2">{alert.message}</p>
+                {alert.evidence_list && alert.evidence_list.length > 0 && (
+                  <div className="pt-2 border-t border-rose-500/20 text-[10px] text-rose-200/80 truncate">
+                    Źródło: {alert.evidence_list[0]}
                   </div>
-                  <h5 className="text-xs font-medium text-white leading-snug hover:text-cyan-300 transition-colors">
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-start justify-between gap-2"
-                    >
-                      <span>{doc.title}</span>
-                      <ExternalLink className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 mt-0.5" />
-                    </a>
-                  </h5>
-                </div>
-
-                <div className="flex items-center gap-2 mt-2.5 pt-2 border-t border-surface-border/70 text-[10px] text-slate-400 flex-wrap">
-                  {doc.facility_location && (
-                    <span className="flex items-center gap-1 text-slate-200 bg-white/5 px-1.5 py-0.5 rounded">
-                      <MapPin className="w-3 h-3 text-cyan-400" />
-                      {doc.facility_location}
-                    </span>
-                  )}
-                  {doc.is_labor_signal && (
-                    <span className="bg-amber-950/50 text-amber-300 px-1.5 py-0.5 rounded border border-amber-500/30">
-                      Sygnał pracowniczy
-                    </span>
-                  )}
-                  {doc.is_orlen_official && (
-                    <span className="bg-sky-950/60 text-sky-300 px-1.5 py-0.5 rounded border border-sky-500/30">
-                      Ekosystem ORLEN
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             ))}
           </div>

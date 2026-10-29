@@ -1,6 +1,7 @@
 import { dbRepo } from "@/lib/db";
 import { FileText, Building2, Flame, ExternalLink, ShieldCheck } from "lucide-react";
 import { PrintButton } from "@/components/PrintButton";
+import { formatPublicationTime } from "@/lib/format/publication";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -54,11 +55,11 @@ export default async function ReportsPage() {
               <div className="text-lg font-bold font-mono text-white mt-1">{stats.totalDocs}</div>
             </div>
             <div className="bg-surface-muted p-3 rounded-lg border border-surface-border">
-              <span className="text-neutral-400">Oficjalne ORLEN</span>
-              <div className="text-lg font-bold font-mono text-white mt-1">{stats.officialDocs}</div>
+              <span className="text-neutral-400">Oficjalne komunikaty ORLEN</span>
+              <div className="text-lg font-bold font-mono text-cyan-300 mt-1">{stats.officialDocs}</div>
             </div>
             <div className="bg-surface-muted p-3 rounded-lg border border-surface-border">
-              <span className="text-neutral-400">Sygnały pracownicze</span>
+              <span className="text-neutral-400">Sygnały związkowe i załogi</span>
               <div className="text-lg font-bold font-mono text-amber-300 mt-1">{stats.laborDocs}</div>
             </div>
             <div className="bg-surface-muted p-3 rounded-lg border border-surface-border">
@@ -91,7 +92,7 @@ export default async function ReportsPage() {
                     </strong>
                   </span>
                   <span className="font-mono">
-                    Wykryto: {new Date(evt.first_detected_at).toLocaleDateString("pl-PL")}
+                    Pierwsza publikacja: {formatPublicationTime(evt.first_detected_at)}
                   </span>
                 </div>
               </div>
@@ -118,8 +119,10 @@ export default async function ReportsPage() {
                     <ExternalLink className="w-3 h-3 text-neutral-500 flex-shrink-0" />
                   </a>
                   <div className="text-[11px] text-neutral-400 mt-0.5">
-                    Źródło: <strong>{doc.source_name}</strong> | Opublikowano:{" "}
-                    {doc.published_at ? new Date(doc.published_at).toLocaleString("pl-PL") : "Brak daty"}
+                    Wydawca: <strong className="text-cyan-200">{doc.source_name}</strong> | Godzina ukazania się:{" "}
+                    <strong className="text-white">
+                      {formatPublicationTime(doc.published_at)}
+                    </strong>
                   </div>
                 </div>
 

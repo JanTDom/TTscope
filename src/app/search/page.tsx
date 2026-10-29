@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Search, ExternalLink, MapPin, Clock } from "lucide-react";
 import type { Document } from "@/lib/db/types";
+import { formatPublicationTime } from "@/lib/format/publication";
 
 export default function SearchPage() {
   const [query, setQuery] = useState("");
@@ -93,7 +94,7 @@ export default function SearchPage() {
             <div key={doc.id} className="bg-surface p-4 rounded-xl border border-surface-border space-y-2">
               <div className="flex items-center justify-between text-[11px] text-neutral-400">
                 <span className="font-semibold text-neutral-200">{doc.source_name}</span>
-                <span className="font-mono">{doc.published_at ? new Date(doc.published_at).toLocaleString("pl-PL") : ""}</span>
+                <span className="font-mono">{formatPublicationTime(doc.published_at)}</span>
               </div>
 
               <h3 className="text-sm font-semibold text-white">

@@ -10,6 +10,7 @@ import {
   GitFork,
 } from "lucide-react";
 import { DiffusionFlowGraph } from "@/components/DiffusionFlowGraph";
+import { formatDiffusionStep, formatEventStage, formatPublicationTime } from "@/lib/format/publication";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -40,10 +41,10 @@ export default async function EventDetailPage({ params }: PageProps) {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
             <span className="text-[10px] font-mono uppercase bg-cyan-500/15 border border-cyan-400/30 px-2.5 py-0.5 rounded text-cyan-300">
-              {event.event_stage.replace("_", " ")}
+              {formatEventStage(event.event_stage)}
             </span>
             <span className="text-xs text-slate-300 font-mono">
-              Wykryto: {new Date(event.first_detected_at).toLocaleString("pl-PL")}
+              Pierwsza publikacja: {formatPublicationTime(event.first_detected_at)}
             </span>
           </div>
 
@@ -125,7 +126,7 @@ export default async function EventDetailPage({ params }: PageProps) {
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-cyan-300">{doc.source_name}</span>
                     <span className="text-[10px] font-mono uppercase bg-cyan-950/60 border border-cyan-500/30 px-2 py-0.5 rounded text-cyan-200">
-                      Krok {idx + 1}: {doc.diffusion_step}
+                      Krok {idx + 1}: {formatDiffusionStep(doc.diffusion_step)}
                     </span>
                     {doc.time_delta_seconds > 0 && (
                       <span className="text-[10px] font-mono text-slate-400">
@@ -135,7 +136,7 @@ export default async function EventDetailPage({ params }: PageProps) {
                   </div>
 
                   <span className="font-mono text-[11px] text-slate-400">
-                    {doc.published_at ? new Date(doc.published_at).toLocaleString("pl-PL") : "Brak daty"}
+                    {formatPublicationTime(doc.published_at)}
                   </span>
                 </div>
 

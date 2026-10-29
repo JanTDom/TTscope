@@ -2,6 +2,7 @@ import Link from "next/link";
 import { dbRepo } from "@/lib/db";
 import { GitFork, Clock, ArrowRight, Layers, Activity, Flame } from "lucide-react";
 import { DiffusionFlowGraph } from "@/components/DiffusionFlowGraph";
+import { formatEventStage, formatPublicationTime } from "@/lib/format/publication";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -69,14 +70,14 @@ export default async function DiffusionPage() {
                 <div className="space-y-1">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="text-[10px] font-mono uppercase bg-cyan-500/15 border border-cyan-400/30 px-2 py-0.5 rounded text-cyan-300">
-                      {evt.event_stage.replace("_", " ")}
+                      {formatEventStage(evt.event_stage)}
                     </span>
                     <h3 className="text-base font-semibold text-white">{evt.title}</h3>
                   </div>
                   <p className="text-xs text-slate-300 flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                    Pierwszy sygnał: {new Date(evt.first_detected_at).toLocaleString("pl-PL")} | Ostatnia aktywność:{" "}
-                    {new Date(evt.last_signal_at).toLocaleString("pl-PL")}
+                    Pierwsza publikacja: {formatPublicationTime(evt.first_detected_at)} | Ostatnia publikacja:{" "}
+                    {formatPublicationTime(evt.last_signal_at)}
                   </p>
                 </div>
 

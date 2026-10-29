@@ -1,5 +1,6 @@
 import { dbRepo } from "@/lib/db";
 import { Bell, Flame, ShieldAlert, CheckCircle2, Clock } from "lucide-react";
+import { formatPublicationTime } from "@/lib/format/publication";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -53,9 +54,9 @@ export default async function AlertsPage() {
                   Poziom: {alert.severity}
                 </span>
 
-                <span className="text-xs text-neutral-400 font-mono flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  Wykryto: {new Date(alert.created_at).toLocaleString("pl-PL")}
+                <span className="text-xs text-cyan-300 font-mono flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                  Godzina ostatniej publikacji: {formatPublicationTime(alert.created_at)}
                 </span>
               </div>
 

@@ -1,12 +1,15 @@
 import React from "react";
-import { Building2, Radio, Users, Newspaper, ExternalLink, Clock } from "lucide-react";
+import { Building2, Radio, Users, Newspaper, ExternalLink, Clock, Briefcase } from "lucide-react";
+import { formatPublicationTime } from "@/lib/format/publication";
 
 export interface DiffusionNodeItem {
   id: string;
   title: string;
   url: string;
   source_name: string;
+  source_type?: string;
   published_at?: string | null;
+  fetched_at?: string | null;
   diffusion_step: string;
   time_delta_seconds: number;
   is_orlen_official: boolean;
@@ -29,75 +32,104 @@ export function DiffusionFlowGraph({ documents, maxNodes = 4 }: DiffusionFlowGra
     );
   }
 
-  const getStepBadge = (step: string, isOfficial: boolean, isLabor: boolean, index: number) => {
-    if (index === 0) {
+  const getStepStyle = (node: DiffusionNodeItem, index: number) => {
+    if (node.is_orlen_official) {
       return {
-        label: "Sygnał pierwotny (Origin)",
-        borderColor: "border-cyan-400/60",
-        bgColor: "bg-cyan-950/50",
+        label: index === 0 ? "Komunikat pierwotny ORLEN" : "Oficjalne stanowisko ORLEN",
+        borderColor: "border-cyan-400/70",
+        bgColor: "bg-gradient-to-br from-cyan-950/70 via-[#081d38] to-[#051124]",
         textColor: "text-cyan-300",
         dotColor: "bg-cyan-400",
-        icon: Radio,
-      };
-    }
-    if (isOfficial) {
-      return {
-        label: "Komunikat ORLEN",
-        borderColor: "border-sky-400/60",
-        bgColor: "bg-sky-950/50",
-        textColor: "text-sky-300",
-        dotColor: "bg-sky-400",
         icon: Building2,
       };
     }
-    if (isLabor) {
+    if (node.is_labor_signal || node.diffusion_step === "labor_signal") {
       return {
-        label: "Sygnał związkowy",
-        borderColor: "border-amber-400/60",
-        bgColor: "bg-amber-950/50",
+        label: "Sygnał wewnętrzny / związkowy",
+        borderColor: "border-amber-400/70",
+        bgColor: "bg-gradient-to-br from-amber-950/60 via-[#1f1608] to-[#0a0d18]",
         textColor: "text-amber-300",
         dotColor: "bg-amber-400",
         icon: Users,
       };
     }
+    if (index === 0) {
+      return {
+        label: "Pierwsza publikacja w mediach",
+        borderColor: "border-sky-400/60",
+        bgColor: "bg-gradient-to-br from-sky-950/60 via-[#091b34] to-[#051020]",
+        textColor: "text-sky-300",
+        dotColor: "bg-sky-400",
+        icon: Radio,
+      };
+    }
+    if (node.diffusion_step === "industry_media" || node.source_type === "media_industry") {
+      return {
+        label: "Portal branżowy / energetyczny",
+        borderColor: "border-indigo-400/50",
+        bgColor: "bg-gradient-to-br from-indigo-950/50 via-[#0d152e] to-[#060c1a]",
+        textColor: "text-indigo-300",
+        dotColor: "bg-indigo-400",
+        icon: Briefcase,
+      };
+    }
+    if (node.diffusion_step === "local_pickup" || node.source_type === "media_regional") {
+      return {
+        label: "Prasa i portal regionalny",
+        borderColor: "border-emerald-400/50",
+        bgColor: "bg-gradient-to-br from-emerald-950/45 via-[#071f1e] to-[#05101a]",
+        textColor: "text-emerald-300",
+        dotColor: "bg-emerald-400",
+        icon: Newspaper,
+      };
+    }
     return {
-      label: step === "national_media" ? "Media ogólnopolskie" : "Podjęcie medialne",
-      borderColor: "border-indigo-400/40",
-      bgColor: "bg-slate-900/80",
-      textColor: "text-slate-200",
-      dotColor: "bg-indigo-400",
+      label: "Publikacja w mediach ogólnopolskich",
+      borderColor: "border-purple-400/45",
+      bgColor: "bg-gradient-to-br from-slate-900/95 via-[#0c1428] to-[#050b16]",
+      textColor: "text-purple-300",
+      dotColor: "bg-purple-400",
       icon: Newspaper,
     };
   };
 
+  const formatDelta = (seconds: number, index: number) => {
+    if (index === 0) return "Punkt startowy (T+0)";
+    const mins = Math.round((seconds || 0) / 60);
+    if (mins < 60) return `+${mins} min później`;
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    if (hours < 24) return remMins > 0 ? `+${hours} godz. ${remMins} min` : `+${hours} godz.`;
+    const days = Math.floor(hours / 24);
+    const remHours = hours % 24;
+    return `+${days} d ${remHours} godz.`;
+  };
+
   return (
-    <div className="relative py-4">
+    <div className="relative py-3">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 relative z-10">
         {nodes.map((node, idx) => {
-          const style = getStepBadge(node.diffusion_step, node.is_orlen_official, node.is_labor_signal, idx);
+          const style = getStepStyle(node, idx);
           const IconComponent = style.icon;
           const isLast = idx === nodes.length - 1;
-          const deltaMinutes = Math.round((node.time_delta_seconds || 0) / 60);
 
           return (
             <div key={node.id} className="relative flex flex-col">
-              {/* Animowane połączenie wektorowe SVG pomiędzy kartami na desktopie */}
+              {/* Animowane połączenie wektorowe SVG pomiędzy ogniwami na desktopie */}
               {!isLast && (
                 <div
                   className="hidden lg:flex items-center justify-center absolute -right-6 top-1/2 -translate-y-1/2 w-6 z-20 pointer-events-none"
                   aria-hidden="true"
                 >
                   <svg width="28" height="24" viewBox="0 0 28 24" fill="none" className="overflow-visible">
-                    {/* Tło ścieżki */}
                     <line
                       x1="0"
                       y1="12"
                       x2="26"
                       y2="12"
-                      stroke="rgba(0, 229, 255, 0.2)"
+                      stroke="rgba(0, 229, 255, 0.22)"
                       strokeWidth="2"
                     />
-                    {/* Animowany impuls przepływu */}
                     <line
                       x1="0"
                       y1="12"
@@ -107,39 +139,35 @@ export function DiffusionFlowGraph({ documents, maxNodes = 4 }: DiffusionFlowGra
                       strokeWidth="2.5"
                       className="animate-signal-flow"
                     />
-                    {/* Grot strzałki */}
-                    <polygon points="22,7 28,12 22,17" fill="#00e5ff" />
+                    <polygon points="21,7 28,12 21,17" fill="#00e5ff" />
                   </svg>
                 </div>
               )}
 
-              {/* Karta węzła dyfuzji */}
+              {/* Karta ogniwa dyfuzji */}
               <div
-                className={`flex-1 rounded-xl border ${style.borderColor} ${style.bgColor} p-4 flex flex-col justify-between transition-all hover:scale-[1.01] shadow-[0_4px_20px_rgba(0,0,0,0.35)] relative overflow-hidden`}
+                className={`flex-1 rounded-2xl border ${style.borderColor} ${style.bgColor} p-4 flex flex-col justify-between transition-all hover:scale-[1.01] shadow-[0_8px_28px_rgba(0,0,0,0.45)] relative overflow-hidden`}
               >
-                {/* Dekoracyjny pasek świetlny u góry */}
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-black/40 border border-white/10 text-cyan-300">
-                    <span className={`w-2 h-2 rounded-full ${style.dotColor} animate-node-pulse`} />
-                    Krok {idx + 1}
-                  </span>
+                <div>
+                  {/* Nagłówek karty z numerem ogniwa i opóźnieniem */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/50 border border-white/10 text-cyan-300 font-semibold">
+                      <span className={`w-2 h-2 rounded-full ${style.dotColor} animate-node-pulse`} />
+                      Ogniwo {idx + 1}
+                    </span>
 
-                  <span className="text-[10px] font-mono text-slate-300 flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-cyan-400" />
-                    {idx === 0
-                      ? "T+0 min"
-                      : deltaMinutes > 120
-                      ? `+${Math.round(deltaMinutes / 60)} godz.`
-                      : `+${deltaMinutes} min`}
-                  </span>
-                </div>
+                    <span className="text-[10px] font-mono text-cyan-200/90 bg-cyan-950/60 border border-cyan-500/25 px-2 py-0.5 rounded-md">
+                      {formatDelta(node.time_delta_seconds, idx)}
+                    </span>
+                  </div>
 
-                <div className="space-y-2">
-                  <div className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${style.textColor}`}>
-                    <IconComponent className="w-3.5 h-3.5" />
+                  {/* Typ ogniwa (Komunikat ORLEN / Prasa / Związki) */}
+                  <div className={`inline-flex items-center gap-1.5 text-[11px] font-semibold mb-2 ${style.textColor}`}>
+                    <IconComponent className="w-3.5 h-3.5 flex-shrink-0" />
                     <span>{style.label}</span>
                   </div>
 
+                  {/* Tytuł publikacji */}
                   <h4 className="text-xs font-semibold text-white leading-snug line-clamp-3 hover:text-cyan-300 transition-colors">
                     <a
                       href={node.url}
@@ -153,18 +181,23 @@ export function DiffusionFlowGraph({ documents, maxNodes = 4 }: DiffusionFlowGra
                   </h4>
                 </div>
 
-                <div className="mt-4 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px] text-slate-300">
-                  <span className="font-medium truncate max-w-[140px]" title={node.source_name}>
-                    {node.source_name}
-                  </span>
-                  <span className="font-mono text-slate-400">
-                    {node.published_at
-                      ? new Date(node.published_at).toLocaleTimeString("pl-PL", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })
-                      : ""}
-                  </span>
+                {/* Stopka z wydawcą i autentyczną godziną ukazania się */}
+                <div className="mt-4 pt-3 border-t border-white/10 space-y-1 text-[10px]">
+                  <div className="flex items-center justify-between text-slate-200">
+                    <span className="text-slate-400">Wydawca:</span>
+                    <strong className="font-semibold text-cyan-200 truncate max-w-[155px]" title={node.source_name}>
+                      {node.source_name}
+                    </strong>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-300 font-mono">
+                    <span className="text-slate-400 flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5 text-cyan-400" />
+                      Ukazanie się:
+                    </span>
+                    <span className="text-white font-medium">
+                      {formatPublicationTime(node.published_at)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

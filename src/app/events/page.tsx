@@ -10,6 +10,7 @@ import {
   MapPin,
   Clock,
 } from "lucide-react";
+import { formatEventStage } from "@/lib/format/publication";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -56,7 +57,7 @@ export default async function EventsPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
                     <span className="text-[10px] font-mono uppercase bg-white/10 px-2 py-0.5 rounded text-neutral-300">
-                      {evt.event_stage.replace("_", " ")}
+                      {formatEventStage(evt.event_stage)}
                     </span>
 
                     <div className="flex items-center gap-1.5">
