@@ -28,6 +28,9 @@ function LoginForm() {
 
       const data = await res.json();
       if (data.ok) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("ttscope_unlocked", "true");
+        }
         router.push(from);
         router.refresh();
       } else {

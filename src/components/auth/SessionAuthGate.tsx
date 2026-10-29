@@ -5,10 +5,14 @@ import { AnimatedTTscopeLogo } from "./AnimatedTTscopeLogo";
 import { KeyRound, ArrowRight, AlertCircle, Lock, ShieldCheck } from "lucide-react";
 
 export function SessionAuthGate({ children }: { children: React.ReactNode }) {
-  // Pamięć stanu odblokowania w bieżącym załadowaniu strony
-  // Każde zatwierdzenie domeny w pasku adresu lub pełne odświeżenie F5/Cmd+R
-  // ZAWSZE resetuje ten stan do false, wymuszając wyświetlenie okna logowania!
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  // Sprawdzamy czy sesja została już odblokowana w bieżącej karcie przeglądarki
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("ttscope_unlocked") === "true";
+    }
+    return false;
+  });
+
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +23,9 @@ export function SessionAuthGate({ children }: { children: React.ReactNode }) {
       setIsUnlocked(false);
       setPassword("");
       setError(null);
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("ttscope_unlocked");
+      }
     };
 
     window.addEventListener("ttscope:lock", handleLock);
@@ -41,6 +48,9 @@ export function SessionAuthGate({ children }: { children: React.ReactNode }) {
       if (data.ok) {
         setIsUnlocked(true);
         setError(null);
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem("ttscope_unlocked", "true");
+        }
       } else {
         setError(data.error || "Nieprawidłowe hasło dostępu");
       }
@@ -51,8 +61,7 @@ export function SessionAuthGate({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Dopóki konsola nie jest odblokowana w bieżącym wejściu na stronę,
-  // ZAWSZE wyświetla się spektakularny ekran logowania z animowanym logo!
+  // Dopóki konsola nie jest odblokowana, ZAWSZE wyświetla się pojedynczy, spektakularny ekran logowania
   if (!isUnlocked) {
     return (
       <div className="fixed inset-0 z-[9999] min-h-screen bg-[#030914] flex flex-col justify-center items-center p-4 sm:p-6 overflow-y-auto radar-grid-bg">

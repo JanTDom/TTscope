@@ -801,4 +801,351 @@ export const postgresRepo = {
       latestPublished,
     };
   },
+
+  // ==============================================================================
+  // METODY REJESTRU PODMIOTÓW GRUPY ORLEN (OrlenEntityRegistry)
+  // ==============================================================================
+
+  async getOrlenEntities(filter?: {
+    segment?: string;
+    status?: string;
+    country?: string;
+    is_monitored?: boolean;
+    query?: string;
+  }): Promise<any[]> {
+    const pool = getPgPool();
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let pIdx = 1;
+
+    if (filter?.segment && filter.segment !== "all") {
+      conditions.push(`business_segment = $${pIdx}`);
+      params.push(filter.segment);
+      pIdx++;
+    }
+    if (filter?.status && filter.status !== "all") {
+      conditions.push(`entity_status = $${pIdx}`);
+      params.push(filter.status);
+      pIdx++;
+    }
+    if (filter?.country && filter.country !== "all") {
+      conditions.push(`country = $${pIdx}`);
+      params.push(filter.country);
+      pIdx++;
+    }
+    if (filter?.is_monitored !== undefined) {
+      conditions.push(`is_monitored = $${pIdx}`);
+      params.push(filter.is_monitored);
+      pIdx++;
+    }
+    if (filter?.query && filter.query.trim()) {
+      const q = `%${filter.query.trim()}%`;
+      conditions.push(`(name ILIKE $${pIdx} OR legal_name ILIKE $${pIdx} OR short_name ILIKE $${pIdx} OR brand_name ILIKE $${pIdx})`);
+      params.push(q);
+      pIdx++;
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const res = await pool.query(
+      `SELECT * FROM entities ${where} ORDER BY is_monitored DESC, name ASC`,
+      params
+    );
+
+    return res.rows.map((r) => ({
+      ...r,
+      domains: typeof r.domains === "string" ? JSON.parse(r.domains) : r.domains || [],
+      social_profiles: typeof r.social_profiles === "string" ? JSON.parse(r.social_profiles) : r.social_profiles || {},
+      search_aliases: typeof r.search_aliases === "string" ? JSON.parse(r.search_aliases) : r.search_aliases || [],
+      is_monitored: Boolean(r.is_monitored),
+      last_verified_at: r.last_verified_at instanceof Date ? r.last_verified_at.toISOString() : String(r.last_verified_at || ""),
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at || ""),
+      updated_at: r.updated_at instanceof Date ? r.updated_at.toISOString() : String(r.updated_at || ""),
+    }));
+  },
+
+  async getOrlenEntityById(id: string): Promise<any | null> {
+    const pool = getPgPool();
+    const res = await pool.query("SELECT * FROM entities WHERE id = $1", [id]);
+    if (res.rows.length === 0) return null;
+    const r = res.rows[0];
+    return {
+      ...r,
+      domains: typeof r.domains === "string" ? JSON.parse(r.domains) : r.domains || [],
+      social_profiles: typeof r.social_profiles === "string" ? JSON.parse(r.social_profiles) : r.social_profiles || {},
+      search_aliases: typeof r.search_aliases === "string" ? JSON.parse(r.search_aliases) : r.search_aliases || [],
+      is_monitored: Boolean(r.is_monitored),
+      last_verified_at: r.last_verified_at instanceof Date ? r.last_verified_at.toISOString() : String(r.last_verified_at || ""),
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at || ""),
+      updated_at: r.updated_at instanceof Date ? r.updated_at.toISOString() : String(r.updated_at || ""),
+    };
+  },
+
+  async upsertOrlenEntity(entity: any): Promise<any> {
+    const pool = getPgPool();
+    const now = new Date().toISOString();
+    await pool.query(
+      `
+      INSERT INTO entities (
+        id, name, entity_type, description, canonical_name, legal_name, short_name, former_name,
+        brand_name, parent_company, country, business_segment, website, domains, social_profiles,
+        ticker, nip, krs, entity_status, last_verified_at, verification_source, search_aliases,
+        is_monitored, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        canonical_name = EXCLUDED.canonical_name,
+        legal_name = EXCLUDED.legal_name,
+        short_name = EXCLUDED.short_name,
+        former_name = EXCLUDED.former_name,
+        brand_name = EXCLUDED.brand_name,
+        parent_company = EXCLUDED.parent_company,
+        country = EXCLUDED.country,
+        business_segment = EXCLUDED.business_segment,
+        website = EXCLUDED.website,
+        domains = EXCLUDED.domains,
+        social_profiles = EXCLUDED.social_profiles,
+        ticker = EXCLUDED.ticker,
+        nip = EXCLUDED.nip,
+        krs = EXCLUDED.krs,
+        entity_status = EXCLUDED.entity_status,
+        last_verified_at = EXCLUDED.last_verified_at,
+        verification_source = EXCLUDED.verification_source,
+        search_aliases = EXCLUDED.search_aliases,
+        is_monitored = EXCLUDED.is_monitored,
+        updated_at = $25
+    `,
+      [
+        entity.id,
+        entity.name,
+        entity.entity_type || "company",
+        entity.description || entity.legal_name || "",
+        entity.canonical_name || entity.name,
+        entity.legal_name || entity.name,
+        entity.short_name || entity.name,
+        entity.former_name || null,
+        entity.brand_name || null,
+        entity.parent_company || "ORLEN S.A.",
+        entity.country || "PL",
+        entity.business_segment || "Inne",
+        entity.website || "",
+        JSON.stringify(entity.domains || []),
+        JSON.stringify(entity.social_profiles || {}),
+        entity.ticker || null,
+        entity.nip || null,
+        entity.krs || null,
+        entity.entity_status || "active",
+        entity.last_verified_at || now,
+        entity.verification_source || "Oficjalny rejestr",
+        JSON.stringify(entity.search_aliases || []),
+        entity.is_monitored !== undefined ? Boolean(entity.is_monitored) : true,
+        entity.created_at || now,
+        now,
+      ]
+    );
+
+    return await this.getOrlenEntityById(entity.id);
+  },
+
+  async updateOrlenEntityMonitored(id: string, is_monitored: boolean): Promise<void> {
+    const pool = getPgPool();
+    await pool.query(
+      "UPDATE entities SET is_monitored = $1, updated_at = now() WHERE id = $2",
+      [is_monitored, id]
+    );
+  },
+
+  async updateOrlenEntityAliases(id: string, aliases: string[]): Promise<void> {
+    const pool = getPgPool();
+    await pool.query(
+      "UPDATE entities SET search_aliases = $1, updated_at = now() WHERE id = $2",
+      [JSON.stringify(aliases), id]
+    );
+  },
+
+  async updateOrlenEntitySocialProfiles(id: string, social_profiles: any): Promise<void> {
+    const pool = getPgPool();
+    await pool.query(
+      "UPDATE entities SET social_profiles = $1, updated_at = now() WHERE id = $2",
+      [JSON.stringify(social_profiles), id]
+    );
+  },
+
+  async insertEntityAudit(audit: any): Promise<void> {
+    const pool = getPgPool();
+    await pool.query(
+      `
+      INSERT INTO entity_registry_audit (
+        id, entity_id, field_name, old_value, new_value, change_type, confidence, source, confirmed_by_human, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `,
+      [
+        audit.id,
+        audit.entity_id,
+        audit.field_name,
+        audit.old_value || null,
+        audit.new_value || null,
+        audit.change_type,
+        audit.confidence || 1.0,
+        audit.source,
+        Boolean(audit.confirmed_by_human),
+        audit.created_at || new Date().toISOString(),
+      ]
+    );
+  },
+
+  async getEntityAuditLogs(entityId?: string): Promise<any[]> {
+    const pool = getPgPool();
+    const where = entityId ? "WHERE entity_id = $1" : "";
+    const params = entityId ? [entityId] : [];
+    const res = await pool.query(
+      `SELECT * FROM entity_registry_audit ${where} ORDER BY created_at DESC LIMIT 100`,
+      params
+    );
+    return res.rows.map((r) => ({
+      ...r,
+      confidence: parseFloat(r.confidence || "1.0"),
+      confirmed_by_human: Boolean(r.confirmed_by_human),
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+    }));
+  },
+
+  async upsertDocumentEntity(docEntity: any): Promise<void> {
+    const pool = getPgPool();
+    await pool.query(
+      `
+      INSERT INTO document_entities (
+        id, document_id, entity_id, entity_match_confidence, match_rationale, matched_text,
+        review_status, reviewed_by, reviewed_at, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ON CONFLICT (document_id, entity_id) DO UPDATE SET
+        entity_match_confidence = EXCLUDED.entity_match_confidence,
+        match_rationale = EXCLUDED.match_rationale,
+        matched_text = EXCLUDED.matched_text,
+        review_status = EXCLUDED.review_status,
+        reviewed_by = EXCLUDED.reviewed_by,
+        reviewed_at = EXCLUDED.reviewed_at
+    `,
+      [
+        docEntity.id,
+        docEntity.document_id,
+        docEntity.entity_id,
+        docEntity.entity_match_confidence,
+        docEntity.match_rationale,
+        docEntity.matched_text || null,
+        docEntity.review_status || "auto_matched",
+        docEntity.reviewed_by || null,
+        docEntity.reviewed_at || null,
+        docEntity.created_at || new Date().toISOString(),
+      ]
+    );
+  },
+
+  async getDocumentEntities(filter?: {
+    documentId?: string;
+    entityId?: string;
+    reviewStatus?: string;
+    limit?: number;
+  }): Promise<any[]> {
+    const pool = getPgPool();
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let pIdx = 1;
+
+    if (filter?.documentId) {
+      conditions.push(`de.document_id = $${pIdx}`);
+      params.push(filter.documentId);
+      pIdx++;
+    }
+    if (filter?.entityId) {
+      conditions.push(`de.entity_id = $${pIdx}`);
+      params.push(filter.entityId);
+      pIdx++;
+    }
+    if (filter?.reviewStatus && filter.reviewStatus !== "all") {
+      conditions.push(`de.review_status = $${pIdx}`);
+      params.push(filter.reviewStatus);
+      pIdx++;
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const limitClause = `LIMIT $${pIdx}`;
+    params.push(filter?.limit || 50);
+
+    const res = await pool.query(
+      `
+      SELECT de.*, d.title as document_title, d.url as document_url, d.source_name, d.published_at, d.source_type,
+             e.name as entity_name, e.short_name as entity_short_name
+      FROM document_entities de
+      JOIN documents d ON de.document_id = d.id
+      JOIN entities e ON de.entity_id = e.id
+      ${where}
+      ORDER BY de.created_at DESC
+      ${limitClause}
+    `,
+      params
+    );
+
+    return res.rows.map((r) => ({
+      ...r,
+      entity_match_confidence: parseFloat(r.entity_match_confidence || "0"),
+      published_at: r.published_at instanceof Date ? r.published_at.toISOString() : String(r.published_at || ""),
+      created_at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at || ""),
+      reviewed_at: r.reviewed_at instanceof Date ? r.reviewed_at.toISOString() : (r.reviewed_at ? String(r.reviewed_at) : null),
+    }));
+  },
+
+  async updateDocumentEntityReview(
+    id: string,
+    review_status: string,
+    reviewed_by = "Analityk Dyżurny TTscope"
+  ): Promise<void> {
+    const pool = getPgPool();
+    await pool.query(
+      `
+      UPDATE document_entities 
+      SET review_status = $1, reviewed_by = $2, reviewed_at = now()
+      WHERE id = $3
+    `,
+      [review_status, reviewed_by, id]
+    );
+  },
+
+  async getEntityPublicationStats(): Promise<any[]> {
+    const pool = getPgPool();
+    const res = await pool.query(`
+      SELECT 
+        e.id, e.name, e.short_name, e.business_segment, e.country, e.is_monitored,
+        COUNT(de.id) as total_mentions,
+        COUNT(de.id) FILTER (WHERE d.source_type = 'social_media' AND d.source_name ILIKE '%Facebook%') as facebook_count,
+        COUNT(de.id) FILTER (WHERE d.source_type = 'social_media' AND d.source_name ILIKE '%YouTube%') as youtube_count,
+        COUNT(de.id) FILTER (WHERE d.source_type = 'social_media' AND (d.source_name ILIKE '%Twitter%' OR d.source_name ILIKE '% X %' OR d.source_name ILIKE '%X.com%')) as twitter_count,
+        COUNT(de.id) FILTER (WHERE d.source_type = 'official_orlen') as official_count,
+        COUNT(de.id) FILTER (WHERE d.source_type = 'media_industry') as industry_count,
+        COUNT(de.id) FILTER (WHERE d.source_type = 'media_regional') as regional_count,
+        COUNT(de.id) FILTER (WHERE d.source_type = 'media_general') as general_count,
+        MIN(d.published_at) as first_seen_at,
+        MAX(d.published_at) as latest_seen_at
+      FROM entities e
+      LEFT JOIN document_entities de ON e.id = de.entity_id AND de.review_status != 'rejected'
+      LEFT JOIN documents d ON de.document_id = d.id
+      GROUP BY e.id, e.name, e.short_name, e.business_segment, e.country, e.is_monitored
+      ORDER BY total_mentions DESC, e.name ASC
+    `);
+
+    return res.rows.map((r) => ({
+      ...r,
+      total_mentions: parseInt(r.total_mentions || "0", 10),
+      facebook_count: parseInt(r.facebook_count || "0", 10),
+      youtube_count: parseInt(r.youtube_count || "0", 10),
+      twitter_count: parseInt(r.twitter_count || "0", 10),
+      official_count: parseInt(r.official_count || "0", 10),
+      industry_count: parseInt(r.industry_count || "0", 10),
+      regional_count: parseInt(r.regional_count || "0", 10),
+      general_count: parseInt(r.general_count || "0", 10),
+      first_seen_at: r.first_seen_at instanceof Date ? r.first_seen_at.toISOString() : (r.first_seen_at || null),
+      latest_seen_at: r.latest_seen_at instanceof Date ? r.latest_seen_at.toISOString() : (r.latest_seen_at || null),
+    }));
+  },
 };

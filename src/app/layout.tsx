@@ -10,6 +10,15 @@ export const metadata: Metadata = {
   title: "TTscope — System Wywiadu Medialnego i Analizy Kryzysowej Grupy ORLEN",
   description:
     "System wywiadu medialnego i wczesnego ostrzegania, który w czasie rzeczywistym śledzi komunikaty, publikacje oraz sygnały kryzysowe wokół wszystkich spółek i zakładów Grupy ORLEN.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png" },
+    ],
+  },
 };
 
 export default function RootLayout({

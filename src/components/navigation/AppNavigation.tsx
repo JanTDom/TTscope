@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { LogoutButton } from "./LogoutButton";
 import {
   LayoutDashboard,
+  Building2,
   Radio,
   Layers,
   MapPin,
@@ -24,6 +25,7 @@ import {
 
 export const navItems = [
   { href: "/", label: "Centrum sytuacyjne", icon: LayoutDashboard },
+  { href: "/entities", label: "Grupa ORLEN", icon: Building2 },
   { href: "/stream", label: "Strumień publikacji", icon: Radio },
   { href: "/events", label: "Wątki i wydarzenia", icon: Layers },
   { href: "/diffusion", label: "Ścieżki dyfuzji", icon: GitFork },
@@ -115,22 +117,13 @@ export function AppNavigation() {
       {/* ============================================================== */}
       {/* 2. MOBILE TOP BAR (Tylko na ekranach mniejszych niż lg)         */}
       {/* ============================================================== */}
-      <header className="lg:hidden border-b border-cyan-500/25 bg-[#050d1a]/95 backdrop-blur-xl px-4 py-3 flex items-center justify-between flex-shrink-0 z-30 sticky top-0 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
-        <Link href="/" className="flex items-center gap-2">
+      <header className="lg:hidden border-b border-cyan-500/25 bg-[#050d1a]/95 backdrop-blur-xl px-4 py-2 flex items-center justify-between flex-shrink-0 z-30 sticky top-0 shadow-[0_4px_20px_rgba(0,0,0,0.6)]">
+        <Link href="/" className="flex items-center group">
           <img
             src="/ttscope-logo.png"
-            alt="TTscope Logo"
-            className="h-9 w-auto object-contain drop-shadow"
+            alt="Logo TTscope"
+            className="h-14 sm:h-16 w-auto object-contain drop-shadow-[0_2px_15px_rgba(0,229,255,0.4)] group-hover:scale-[1.02] transition-transform"
           />
-          <div className="flex flex-col">
-            <span className="font-mono text-xs font-black tracking-wider text-slate-100">
-              TT<span className="text-cyan-400">SCOPE</span>
-            </span>
-            <span className="text-[9px] text-slate-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              ORLEN OSINT
-            </span>
-          </div>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -138,7 +131,7 @@ export function AppNavigation() {
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label={mobileMenuOpen ? "Zamknij menu" : "Otwórz menu"}
-            className="p-2 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:text-white transition-colors"
+            className="p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 hover:text-white transition-colors"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -226,9 +219,9 @@ export function AppNavigation() {
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-[#050d1a]/95 backdrop-blur-xl border-t border-cyan-500/25 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_25px_rgba(0,0,0,0.8)]">
         {[
           { href: "/", label: "Centrum", icon: LayoutDashboard },
+          { href: "/entities", label: "Grupa", icon: Building2 },
           { href: "/stream", label: "Strumień", icon: Radio },
           { href: "/diffusion", label: "Dyfuzja", icon: GitFork },
-          { href: "/events", label: "Iskrzenia", icon: Layers },
         ].map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;

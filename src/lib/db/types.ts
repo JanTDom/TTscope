@@ -232,3 +232,102 @@ export interface AiAnalysisRun {
   duration_ms: number;
   created_at: string;
 }
+
+// ==============================================================================
+// TTscope — Rejestr Podmiotów Grupy ORLEN (OrlenEntityRegistry)
+// ==============================================================================
+
+export type EntityStatus =
+  | "active"
+  | "merging"
+  | "sold"
+  | "liquidated"
+  | "suspended";
+
+export type EntityReviewStatus =
+  | "auto_matched"
+  | "confirmed"
+  | "rejected"
+  | "overridden";
+
+export interface SocialProfiles {
+  facebook?: string;
+  youtube?: string;
+  twitter_x?: string;
+  linkedin?: string;
+}
+
+export interface OrlenEntity {
+  id: string;
+  name: string;
+  canonical_name: string;
+  legal_name: string;
+  short_name: string;
+  former_name?: string | null;
+  brand_name?: string | null;
+  parent_company: string;
+  country: string;
+  business_segment: string;
+  website: string;
+  domains: string[];
+  social_profiles: SocialProfiles;
+  ticker?: string | null;
+  nip?: string | null;
+  krs?: string | null;
+  entity_status: EntityStatus;
+  last_verified_at: string;
+  verification_source: string;
+  search_aliases: string[];
+  is_monitored: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EntityRegistryAudit {
+  id: string;
+  entity_id: string;
+  field_name: string;
+  old_value?: string | null;
+  new_value?: string | null;
+  change_type: "created" | "updated" | "merged" | "sold" | "status_change";
+  confidence: number;
+  source: string;
+  confirmed_by_human: boolean;
+  created_at: string;
+}
+
+export interface DocumentEntity {
+  id: string;
+  document_id: string;
+  entity_id: string;
+  entity_match_confidence: number;
+  match_rationale: string;
+  matched_text?: string | null;
+  review_status: EntityReviewStatus;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
+}
+
+export interface EntitySearchMatrix {
+  legal_name: string;
+  short_name: string;
+  no_diacritics: string;
+  former_name?: string | null;
+  abbreviations: string[];
+  brand_name?: string | null;
+  english_name?: string | null;
+  declensions: string[];
+  media_variants: string[];
+  social_handles: string[];
+  domain: string;
+  orlen_combinations: string[];
+}
+
+export interface EntityPlatformQueries {
+  general_queries: string[];
+  facebook_queries: string[];
+  youtube_queries: string[];
+  twitter_queries: string[];
+}
+
