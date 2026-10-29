@@ -1,5 +1,6 @@
 import { dbRepo } from "@/lib/db";
-import { FileText, Printer, Building2, Flame, ExternalLink, ShieldCheck } from "lucide-react";
+import { FileText, Building2, Flame, ExternalLink, ShieldCheck } from "lucide-react";
+import { PrintButton } from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -24,12 +25,7 @@ export default async function ReportsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => {}}
-          className="print:hidden flex items-center gap-2 px-4 py-2 bg-surface-muted hover:bg-neutral-800 border border-surface-border rounded-lg text-xs font-medium text-white transition-colors"
-        >
-          <Printer className="w-3.5 h-3.5" /> Drukuj / Zapisz PDF
-        </button>
+        <PrintButton />
       </div>
 
       {/* Ciało Raportu */}

@@ -11,11 +11,23 @@ import {
   Clock,
   History,
 } from "lucide-react";
-import type { Source, SourceConnector, AuditLog } from "@/lib/db/types";
+import type { Source, AuditLog } from "@/lib/db/types";
+
+interface ConnectorWithSource {
+  id: string;
+  source_id: string;
+  connector_type: string;
+  is_configured: boolean;
+  last_success_at?: string | null;
+  last_attempt_at?: string | null;
+  last_error?: string | null;
+  source_name: string;
+  source_domain: string;
+}
 
 export default function AdminPage() {
   const [sources, setSources] = useState<Source[]>([]);
-  const [connectors, setConnectors] = useState<any[]>([]);
+  const [connectors, setConnectors] = useState<ConnectorWithSource[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -24,11 +36,15 @@ export default function AdminPage() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/stats");
-      // Możemy pobrać bezpośrednio dane
-      const connRes = await fetch("/api/documents?limit=1"); // sprawdzenie api
+      const res = await fetch("/api/sources");
+      const data = await res.json();
+      if (data.ok) {
+        setSources(data.sources);
+        setConnectors(data.connectors);
+        setAuditLogs(data.auditLogs);
+      }
     } catch (err) {
-      console.error(err);
+      console.error("Błąd pobierania źródeł z bazy:", err);
     } finally {
       setLoading(false);
     }
@@ -45,6 +61,7 @@ export default function AdminPage() {
       const res = await fetch("/api/ingest", { method: "POST" });
       const data = await res.json();
       setSyncResult(data);
+      await loadData();
     } catch (err) {
       console.error("Błąd synchronizacji:", err);
       setSyncResult({ ok: false, error: "Błąd połączenia z serwerem." });
@@ -62,7 +79,7 @@ export default function AdminPage() {
             Panel administracyjny, rejestr źródeł i audyt
           </h2>
           <p className="text-xs text-neutral-400 mt-1">
-            Zarządzanie konektorami, kontrola stanu zdrowia źródeł danych i weryfikacja kluczy API.
+            Rzeczywisty rejestr konektorów w bazie danych TTscope, kontrola stanu zdrowia i dziennik zdarzeń.
           </p>
         </div>
 
@@ -85,7 +102,7 @@ export default function AdminPage() {
             <div>
               <div className="font-semibold mb-1">Synchronizacja zakończona sukcesem!</div>
               <p className="text-[11px] text-neutral-300">
-                Pobrano i przeanalizowano publikacje. Utworzono/zaktualizowano klastry wydarzeń: {syncResult.clusterResults?.clustersCreated}, aktywne alerty: {syncResult.clusterResults?.alertsCreated}.
+                Pobrano i zindeksowano materiały. Klastry utworzone/zaktualizowane: {syncResult.clusterResults?.clustersCreated}, aktywne alerty: {syncResult.clusterResults?.alertsCreated}.
               </p>
             </div>
           ) : (
@@ -94,103 +111,109 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Rejestr Konektorów i Źródeł */}
+      {/* Dynamiczny Rejestr Konektorów z Bazy Danych */}
       <div className="bg-surface rounded-xl border border-surface-border p-6 space-y-4">
-        <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-          <Globe className="w-4 h-4 text-neutral-400" />
-          Rejestr konektorów i status kluczy API (Zero Mock)
-        </h3>
-
-        <div className="space-y-3">
-          {/* Przykłady z rejestru */}
-          <div className="p-4 bg-surface-muted rounded-lg border border-surface-border flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-white">ORLEN S.A. — Relacje Inwestorskie i ESPI</h4>
-                <span className="text-[10px] font-mono uppercase bg-emerald-950/60 border border-emerald-800/40 text-emerald-300 px-2 py-0.5 rounded">
-                  Połączono (RSS/Atom)
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Konektor: <strong className="text-neutral-300">rss_atom</strong> | Domena: orlen.pl / bankier.pl
-              </p>
-            </div>
-            <div className="text-right text-[11px] text-neutral-400 font-mono">
-              Status: <span className="text-emerald-400">Aktywny</span>
-            </div>
-          </div>
-
-          <div className="p-4 bg-surface-muted rounded-lg border border-surface-border flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-white">Energa S.A. (Grupa ORLEN) — Biuro Prasowe</h4>
-                <span className="text-[10px] font-mono uppercase bg-emerald-950/60 border border-emerald-800/40 text-emerald-300 px-2 py-0.5 rounded">
-                  Połączono (RSS)
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Konektor: <strong className="text-neutral-300">rss_atom</strong> | Domena: media.energa.pl
-              </p>
-            </div>
-            <div className="text-right text-[11px] text-neutral-400 font-mono">
-              Status: <span className="text-emerald-400">Aktywny</span>
-            </div>
-          </div>
-
-          <div className="p-4 bg-surface-muted rounded-lg border border-surface-border flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-white">PetroNews Płock — Media Regionalne Petrochemii</h4>
-                <span className="text-[10px] font-mono uppercase bg-emerald-950/60 border border-emerald-800/40 text-emerald-300 px-2 py-0.5 rounded">
-                  Połączono (RSS)
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Konektor: <strong className="text-neutral-300">rss_atom</strong> | Domena: petronews.pl | Filtracja: Płock, rafineria, Orlen
-              </p>
-            </div>
-            <div className="text-right text-[11px] text-neutral-400 font-mono">
-              Status: <span className="text-emerald-400">Aktywny</span>
-            </div>
-          </div>
-
-          <div className="p-4 bg-surface-muted rounded-lg border border-surface-border flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-white">X (Twitter) — Profil @GrupaORLEN</h4>
-                <span className="text-[10px] font-mono uppercase bg-amber-950/60 border border-amber-800/40 text-amber-300 px-2 py-0.5 rounded">
-                  Wymagany klucz API
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Wymagana zmienna środowiskowa: <code className="bg-neutral-800 px-1 py-0.5 rounded text-neutral-200">TWITTER_BEARER_TOKEN</code>
-              </p>
-              <p className="text-[10px] text-amber-400/80 mt-1">
-                Ograniczenie: brak klucza w środowisku. System nie symuluje postów — oczekuje na autentyczną konfigurację.
-              </p>
-            </div>
-            <div className="text-right text-[11px] text-neutral-400 font-mono">
-              Status: <span className="text-amber-400">Nie skonfigurowano</span>
-            </div>
-          </div>
-
-          <div className="p-4 bg-surface-muted rounded-lg border border-surface-border flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <h4 className="text-xs font-semibold text-white">Facebook — Strona Oficjalna ORLEN</h4>
-                <span className="text-[10px] font-mono uppercase bg-amber-950/60 border border-amber-800/40 text-amber-300 px-2 py-0.5 rounded">
-                  Wymagany klucz API
-                </span>
-              </div>
-              <p className="text-[11px] text-neutral-400 mt-1">
-                Wymagana zmienna środowiskowa: <code className="bg-neutral-800 px-1 py-0.5 rounded text-neutral-200">FACEBOOK_GRAPH_TOKEN</code>
-              </p>
-            </div>
-            <div className="text-right text-[11px] text-neutral-400 font-mono">
-              Status: <span className="text-amber-400">Nie skonfigurowano</span>
-            </div>
-          </div>
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Globe className="w-4 h-4 text-neutral-400" />
+            Rejestr konektorów i źródeł w bazie danych ({connectors.length})
+          </h3>
+          <span className="text-xs text-neutral-400 font-mono">100% dane z tabeli sources i source_connectors</span>
         </div>
+
+        {loading ? (
+          <div className="text-xs text-neutral-500 py-6 text-center animate-pulse">
+            Ładowanie rejestru z bazy danych...
+          </div>
+        ) : connectors.length === 0 ? (
+          <div className="p-8 text-center text-xs text-neutral-500 bg-surface-muted rounded-lg border border-surface-border">
+            Brak zarejestrowanych konektorów w bazie. Uruchom synchronizację, aby zainicjalizować rejestr.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {connectors.map((c) => (
+              <div
+                key={c.id}
+                className="p-4 bg-surface-muted rounded-lg border border-surface-border flex items-start justify-between gap-3"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-xs font-semibold text-white">{c.source_name}</h4>
+                    <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border ${
+                      c.is_configured
+                        ? "bg-emerald-950/60 border-emerald-800/40 text-emerald-300"
+                        : "bg-amber-950/60 border-amber-800/40 text-amber-300"
+                    }`}>
+                      {c.is_configured ? `Aktywny (${c.connector_type})` : "Wymagany klucz API"}
+                    </span>
+                  </div>
+
+                  <p className="text-[11px] text-neutral-400">
+                    Domena: <strong className="text-neutral-300">{c.source_domain}</strong> | Konektor: <code className="bg-black/30 px-1 py-0.5 rounded font-mono text-[10px]">{c.connector_type}</code>
+                  </p>
+
+                  {c.last_error && (
+                    <p className="text-[11px] text-amber-300/90 pt-1">
+                      Status: {c.last_error}
+                    </p>
+                  )}
+                </div>
+
+                <div className="text-right text-[11px] text-neutral-400 font-mono flex-shrink-0">
+                  <div>
+                    {c.last_success_at ? (
+                      <span className="text-emerald-400 flex items-center gap-1 justify-end">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {new Date(c.last_success_at).toLocaleTimeString("pl-PL")}
+                      </span>
+                    ) : (
+                      <span className="text-neutral-500">Brak synchronizacji</span>
+                    )}
+                  </div>
+                  {c.last_attempt_at && (
+                    <div className="text-[10px] text-neutral-500 mt-1">
+                      Próba: {new Date(c.last_attempt_at).toLocaleTimeString("pl-PL")}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Rzeczywisty Dziennik Zdarzeń (Audit Log) */}
+      <div className="bg-surface rounded-xl border border-surface-border p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <History className="w-4 h-4 text-neutral-400" />
+            Dziennik operacyjny (Audit Log) ({auditLogs.length})
+          </h3>
+          <span className="text-[11px] text-neutral-400 font-mono">Tabela audit_logs</span>
+        </div>
+
+        {auditLogs.length === 0 ? (
+          <div className="p-6 text-center text-xs text-neutral-500 bg-surface-muted rounded-lg border border-surface-border">
+            Brak odnotowanych wpisów w dzienniku audytu.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {auditLogs.slice(0, 10).map((log) => (
+              <div
+                key={log.id}
+                className="p-3 bg-surface-muted rounded-lg border border-surface-border flex items-center justify-between text-xs"
+              >
+                <div>
+                  <span className="font-semibold text-white">{log.action_type}</span>
+                  <span className="text-neutral-400 ml-2">obiekt: {log.entity_type}</span>
+                </div>
+                <span className="text-[11px] text-neutral-500 font-mono">
+                  {new Date(log.created_at).toLocaleString("pl-PL")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
