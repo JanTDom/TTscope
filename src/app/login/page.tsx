@@ -3,7 +3,6 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound, ArrowRight, AlertCircle, Lock, ShieldCheck } from "lucide-react";
-import { AnimatedTTscopeLogo } from "@/components/auth/AnimatedTTscopeLogo";
 
 function LoginForm() {
   const router = useRouter();
@@ -91,16 +90,23 @@ export default function LoginPage() {
       <div className="absolute -right-20 -bottom-20 w-[500px] h-[500px] bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="max-w-xl w-full bg-[#051124]/95 border border-cyan-500/35 rounded-3xl p-6 sm:p-8 shadow-[0_20px_70px_rgba(0,0,0,0.85)] relative z-10 backdrop-blur-2xl space-y-6 my-auto">
-        {/* Kontener z dużym logo i animowaną głową w logo */}
-        <div className="flex flex-col items-center text-center space-y-2">
-          <AnimatedTTscopeLogo className="w-full max-w-md mx-auto" />
+        {/* Czysty element graficzny z domeną bez postaci i bez animacji */}
+        <div className="flex flex-col items-center text-center space-y-3 pt-2">
+          <div className="relative group">
+            <div className="absolute inset-0 bg-cyan-400/15 rounded-full blur-xl pointer-events-none" />
+            <img
+              src="/ttscope-domain-brand.png"
+              alt="TTscope.pl"
+              className="relative z-10 h-16 sm:h-20 w-auto object-contain drop-shadow-[0_8px_24px_rgba(0,229,255,0.35)]"
+            />
+          </div>
           
-          <div className="pt-2">
-            <h1 className="text-xl sm:text-2xl font-black tracking-wider text-slate-100 font-mono">
-              KONSOLA WYWIADOWCZA <span className="text-cyan-400">TTSCOPE</span>
+          <div className="space-y-1">
+            <h1 className="text-lg sm:text-xl font-black tracking-wider text-slate-100 font-mono">
+              TERMINAL AUTORYZACYJNY
             </h1>
-            <p className="text-xs text-slate-400 mt-1">
-              ORLEN OSINT & Media Intelligence System
+            <p className="text-xs text-slate-400 font-mono">
+              Wymagane uwierzytelnienie kluczem sesyjnym
             </p>
           </div>
         </div>

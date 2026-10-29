@@ -7,9 +7,20 @@ import { LogoutButton } from "@/components/navigation/LogoutButton";
 import { GitFork, RefreshCw, Radar } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "TTscope — System Wywiadu Medialnego i Analizy Kryzysowej Grupy ORLEN",
-  description:
-    "System wywiadu medialnego i wczesnego ostrzegania, który w czasie rzeczywistym śledzi komunikaty, publikacje oraz sygnały kryzysowe wokół wszystkich spółek i zakładów Grupy ORLEN.",
+  title: "TTscope",
+  description: "ttscope.pl",
+  openGraph: {
+    title: "TTscope",
+    description: "ttscope.pl",
+    url: "https://ttscope.pl",
+    siteName: "TTscope",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "TTscope",
+    description: "ttscope.pl",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico" },
