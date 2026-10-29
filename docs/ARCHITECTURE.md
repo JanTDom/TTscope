@@ -181,3 +181,14 @@ WITH CHECK (true);
    - Czas wykonywania skomplikowanych zadań batchowych ograniczony z poszanowaniem `maxDuration` oraz mechanizm chunkingu (przetwarzanie w partiach po 10-20 źródeł).
 3. **Optymalizacja bundla**:
    - Aktywny `.vercelignore` chroniący przed przekroczeniem limitu 50MB zip / 250MB rozpakowanego kodu.
+
+---
+
+## 5. Zasada Integralności Danych i Bezwzględny Zakaz Danych Próbnych (Zero Mock Policy)
+
+1. **Bezwzględny zakaz wprowadzania fejków, mocków i halucynacji**:
+   - Żadna wersja aplikacji TTscope (deweloperska, preview, produkcyjna) nie może zawierać na stałe zakodowanych fałszywych artykułów, sztucznych incydentów kryzysowych ani zmyślonych wskaźników sentymentu.
+   - Wszelkie dane prezentowane analitykowi muszą być wynikiem realnych procesów ingestion ze zweryfikowanych kanałów (biuletyny, relacje inwestorskie, media, social media).
+2. **Zachowanie w przypadku pustej bazy lub braku wyników**:
+   - Gdy potok nie zarejestrował zdarzeń w zadanym oknie czasowym lub baza jest czysta, widok prezentuje elegancki, rzetelny stan zerowy (`Graceful Zero-State`). Informuje on o statusie procesów nasłuchu, monitorowanych kategoriach i ostatniej dacie pomyślnej synchronizacji.
+   - Niedopuszczalne jest „wypełnianie pustki” zmyślonymi rekordami na potrzeby demonstracji.

@@ -47,15 +47,21 @@ Projekt budowany jest w architekturze **Vercel + Supabase**:
 
 ---
 
-## 3. Rygorystyczny standard jakości (Fable 5.1)
+## 3. Rygorystyczny standard jakości (Fable 5.1) i bezwzględny zakaz fejków
 
-1. **Prawda w faktach i dowodach**:
+1. **Bezwzględny zakaz fejków, mocków, halucynacji i sztywnych danych pokazowych**:
+   - **Żadna wersja aplikacji** (ani developerska, ani staging, ani produkcyjna) nie może zawierać fałszywych, spreparowanych, halucynowanych ani sztywnych danych pokazowych (tzw. dummy data / demo fixtures / mock articles / hardcoded crisis alerts).
+   - Wszystkie prezentowane informacje muszą pochodzić wyłącznie z autentycznych, zindeksowanych i zweryfikowanych źródeł danych (komunikaty Grupy Orlen, publikacje związkowe, depesze PAP, media, rzeczywiste wpisy social media).
+   - W przypadku braku danych w bazie lub w wybranym przedziale czasowym, aplikacja **zawsze** renderuje elegancki, produkcyjny pusty stan (Graceful Zero-State) z precyzyjną informacją: co jest monitorowane, jaki jest status połączenia z potokiem danych oraz kiedy odbyło się ostatnie sprawdzenie.
+   - Wstrzykiwanie sztucznych incydentów, wymyślonych cytatów czy sfabrykowanych wskaźników sentymentu jest traktowane jako krytyczne naruszenie integralności systemu wywiadowczego.
+
+2. **Prawda w faktach i dowodach**:
    - Status zadania raportowany tylko na podstawie wykonanych testów i komend w bieżącej sesji.
    - Żadnych deklaracji „działa” bez podania komendy i jej wyniku liczbowego.
-2. **Czystość kodu i zero śmieci**:
+3. **Czystość kodu i zero śmieci**:
    - Żadnych placeholderów, `TODO`, zakomentowanego kodu ani wersji roboczych.
-   - Żadnych danych próbnych (mocków) w widokach produkcyjnych. Interfejs implementuje trzy pełne stany: ładowania (szkielety), pusty (elegancki zero-state z kontekstem) oraz błędu (zrozumiały komunikat i opcja ponowienia).
-3. **Polska kultura językowa i typograficzna**:
+   - Interfejs implementuje trzy pełne stany: ładowania (szkielety), pusty (elegancki zero-state z kontekstem) oraz błędu (zrozumiały komunikat i opcja ponowienia).
+4. **Polska kultura językowa i typograficzna**:
    - Zero emoji w całym interfejsie użytkownika, nagłówkach, raportach i powiadomieniach.
    - Polskie nagłówki formatowane jako zdania (Sentence case: tylko pierwsza litera i nazwy własne wielką literą).
    - Skrótowce zawsze wielkimi literami: **ORLEN**, **PAP**, **BIP**, **ESPI**, **EBI**, **TK**, **SN**, **KRS**, **PKW**, **TVP**, **PiS**, **PO**, **UE**, **MSWiA**, **KAS**, **BHP**, **MZZPRC**, **NSZZ**.

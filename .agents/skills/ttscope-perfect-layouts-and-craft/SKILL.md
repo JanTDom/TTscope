@@ -56,19 +56,21 @@ Każdy główny widok dashboardu TTscope budowany jest w modularnej siatce bento
 
 ---
 
-## 3. Trzy Nienegocjowalne Stany Komponentu (Clean State Rule)
+## 3. Bezwzględny zakaz fejków i mocków oraz architektura czystego stanu (Zero Mock Policy)
 
-Nigdy nie dopuszczaj do sytuacji, w której brak danych powoduje błąd renderowania lub wyświetla sztuczne dane próbne (mocki typu „Przykładowy artykuł”). Każdy komponent widoku musi bezwzględnie posiadać 3 stany:
+System TTscope jest narzędziem operacyjnym klasy wywiadowczej – **żadna wersja aplikacji (ani deweloperska, ani testowa, ani produkcyjna) nie może zawierać fejków, mocków, halucynacji ani sztywnych danych pokazowych**. Niedopuszczalne jest wstrzykiwanie sztucznych artykułów, zmyślonych cytatów czy sfabrykowanych incydentów kryzysowych.
+
+Każdy komponent widoku musi bezwzględnie posiadać 3 autentyczne stany:
 
 1. **Stan ładowania (Loading Skeleton)**:
    - Dedykowany komponent szkieletowy odzwierciedlający dokładną geometrię karty docelowej z płynną animacją pulsu `animate-pulse bg-white/5`.
 2. **Stan pusty (Graceful Zero-State)**:
-   - Wyświetlany, gdy w danym filtrze lub przedziale czasowym nie odnotowano incydentów.
-   - Zawiera precyzyjną informację tekstową: co jest monitorowane, kiedy odbyło się ostatnie sprawdzenie i przycisk do wymuszenia odświeżenia lub zmiany filtrów.
-   - Zero dekoracyjnych rysunków komiksowych – ascetyczna, elegancka ikona techniczna z subtelnym opisem.
+   - Wyświetlany, gdy baza danych jest świeża lub w danym filtrze/przedziale czasowym nie odnotowano incydentów.
+   - Zawiera precyzyjną informację tekstową: co jest monitorowane, jaki jest stan potoku ingestion, kiedy odbyło się ostatnie sprawdzenie i przycisk do wymuszenia odświeżenia lub zmiany kryteriów.
+   - Zero dekoracyjnych rysunków komiksowych – ascetyczna, elegancka ikona techniczna z subtelnym, rzeczowym opisem.
 3. **Stan błędu (Error Recovery State)**:
-   - Informacja o przyczynie problemu (np. brak łączności z potokiem danych).
-   - Przycisk akcji naprawczej (`Ponów próbę`).
+   - Rzeczowa informacja o przyczynie problemu (np. brak łączności z potokiem danych Supabase).
+   - Dostępny przycisk akcji naprawczej (`Ponów próbę`).
    - Bez wycieku technicznych stack trace'ów do interfejsu użytkownika.
 
 ---

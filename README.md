@@ -28,6 +28,7 @@
 - **Frontend**: Next.js App Router, Tailwind CSS (paleta OKLCH, styl Dark Editorial / Situational Room, zero emoji, WCAG 2.2 AA).
 - **Backend & Baza Danych**: Supabase PostgreSQL z `pgvector` (analiza semantyczna i dopasowywanie wycieków) oraz `pg_trgm` (fuzzy text search).
 - **Hosting & Serverless**: Vercel (Edge & Serverless API Routes z poszanowaniem `force-dynamic`).
+- **Integralność danych (Zero Mock Policy)**: Bezwzględny zakaz stosowania fejków, mocków, halucynacji i sztywnych danych demonstracyjnych w jakiejkolwiek wersji aplikacji. Prezentowane są wyłącznie faktyczne sygnały z procesów ingestion; brak danych obsługiwany jest przez produkcyjne stany zerowe (Graceful Zero-States).
 
 ---
 

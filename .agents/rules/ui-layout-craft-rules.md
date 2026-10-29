@@ -8,9 +8,11 @@ Niniejsze reguły obowiązują bezwzględnie przy tworzeniu widoków, komponent�
 2. **Polska kultura typograficzna**:
    - Wszystkie nagłówki (H1–H4), tytuły kart i sekcji formatuj według zasad polskiej gramatyki (Sentence case: wielka litera tylko na początku i w nazwach własnych).
    - Skrótowce zawsze wielkimi literami: **ORLEN**, **PAP**, **BIP**, **ESPI**, **EBI**, **TK**, **SN**, **KRS**, **PKW**, **TVP**, **PiS**, **PO**, **UE**, **MSWiA**, **KAS**, **BHP**, **MZZPRC**, **NSZZ**.
-3. **Zasada czystego stanu (Clean State Rule)**:
-   - Żadnych sztucznych danych (mocków) w widokach produkcyjnych.
-   - Każdy komponent posiada 3 stany:
+3. **Bezwzględny zakaz fejków, mocków, halucynacji i sztywnych danych pokazowych**:
+   - Żadna z wersji aplikacji (developerska, staging, produkcyjna) nie może zawierać sfabrykowanych artykułów, fikcyjnych incydentów, halucynowanych cytatów ani sztywno zakodowanych danych demonstracyjnych (`dummy data`, `fixtures`, `mock alerts`).
+   - Wszelkie prezentowane dane muszą pochodzić w 100% z rzeczywistych potoków ingestion (baza danych Supabase, rzeczywiste kanały Grupy Orlen, PAP, media, social media).
+   - W przypadku braku wpisów dla wybranego filtra lub świeżej bazy, komponent renderuje czysty, produkcyjny stan zerowy (`Graceful Zero-State`) z informacją o monitorowanym obszarze.
+   - Każdy komponent posiada 3 pełne stany:
      1. Szkielet ładowania (`Loading Skeleton`).
      2. Pusty stan (`Graceful Zero-State`) z informacją i kontekstem.
      3. Stan błędu (`Error Recovery`) z przyciskiem ponowienia.
