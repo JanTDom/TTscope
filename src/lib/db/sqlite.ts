@@ -123,7 +123,10 @@ export function getSqliteDb(): Database.Database {
     fs.mkdirSync(dbDir, { recursive: true });
   }
 
-  const dbPath = path.join(dbDir, "ttscope.db");
+  const dbPath =
+    process.env.NODE_ENV === "test" || process.env.VITEST
+      ? ":memory:"
+      : path.join(dbDir, "ttscope.db");
   const db = new Database(dbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
@@ -496,6 +499,11 @@ export const dbRepo = {
     });
   },
 
+  clearEventDocuments(eventId: string) {
+    const db = getSqliteDb();
+    db.prepare("DELETE FROM event_documents WHERE event_id = ?").run(eventId);
+  },
+
   linkDocumentToEvent(eventDoc: EventDocument) {
     const db = getSqliteDb();
     db.prepare(`
@@ -525,15 +533,16 @@ export const dbRepo = {
   insertAlert(alert: Alert) {
     const db = getSqliteDb();
     db.prepare(`
-      INSERT INTO alerts (id, event_id, document_id, alert_type, severity, title, message, evidence_list, is_active)
-      VALUES (@id, @event_id, @document_id, @alert_type, @severity, @title, @message, @evidence_list, @is_active)
+      INSERT INTO alerts (id, event_id, document_id, alert_type, severity, title, message, evidence_list, is_active, created_at)
+      VALUES (@id, @event_id, @document_id, @alert_type, @severity, @title, @message, @evidence_list, @is_active, @created_at)
       ON CONFLICT(id) DO UPDATE SET
         alert_type = excluded.alert_type,
         severity = excluded.severity,
         title = excluded.title,
         message = excluded.message,
         evidence_list = excluded.evidence_list,
-        is_active = excluded.is_active
+        is_active = excluded.is_active,
+        created_at = excluded.created_at
     `).run({
       id: alert.id,
       event_id: alert.event_id || null,
@@ -544,6 +553,7 @@ export const dbRepo = {
       message: alert.message,
       evidence_list: JSON.stringify(alert.evidence_list || []),
       is_active: alert.is_active ? 1 : 0,
+      created_at: alert.created_at || new Date().toISOString(),
     });
   },
 
@@ -626,6 +636,7 @@ export const dbRepo = {
     const activeSources = (db.prepare("SELECT COUNT(*) as c FROM sources WHERE is_active = 1").get() as any).c;
 
     const lastFetch = (db.prepare("SELECT finished_at FROM source_fetch_runs WHERE status = 'success' ORDER BY finished_at DESC LIMIT 1").get() as any)?.finished_at || null;
+    const latestPublished = (db.prepare("SELECT published_at FROM documents WHERE published_at IS NOT NULL ORDER BY published_at DESC LIMIT 1").get() as any)?.published_at || null;
 
     return {
       totalDocs,
@@ -637,6 +648,7 @@ export const dbRepo = {
       totalSources,
       activeSources,
       lastFetch,
+      latestPublished,
     };
   },
 };

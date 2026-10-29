@@ -60,7 +60,7 @@ const TOPIC_RULES: TopicClusterRule[] = [
   {
     id: "cluster_labor_unions_negotiations",
     title: "Dialog społeczny, postulaty płacowe i aktywność związków zawodowych",
-    keywords: ["solidarność", "mzzprc", "związk", "płac", "spór zbiorowy", "załog"],
+    keywords: ["solidarność", "mzzprc", "związki zawodowe", "związkowcy", "spór zbiorowy", "załoga", "strajk"],
     facilityLocation: "Płock",
   },
   {
@@ -79,29 +79,41 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
   let alertsCreated = 0;
 
   for (const rule of TOPIC_RULES) {
-    const matchedDocs = documents.filter((doc) => {
+    const allMatchedDocs = documents.filter((doc) => {
+      if (!doc.published_at) return false;
       const combined = (doc.title + " " + doc.content).toLowerCase();
-      const matchesKeyword = rule.keywords.some((kw) => combined.includes(kw));
-      const matchesFacility = rule.facilityLocation
-        ? doc.facility_location?.toLowerCase() === rule.facilityLocation.toLowerCase()
-        : true;
-      return matchesKeyword || (rule.facilityLocation && doc.facility_location === rule.facilityLocation);
+      return rule.keywords.some((kw) => combined.includes(kw));
     });
 
-    if (matchedDocs.length === 0) continue;
+    if (allMatchedDocs.length === 0) continue;
 
-    // Sortowanie chronologiczne
+    // Sortowanie od najnowszych, aby wyznaczyć spójną, bieżącą falę tematyczną (okno 48h od najnowszego artykułu, fallback do 7 dni)
+    allMatchedDocs.sort((a, b) => {
+      return new Date(b.published_at!).getTime() - new Date(a.published_at!).getTime();
+    });
+
+    const latestEpoch = new Date(allMatchedDocs[0].published_at!).getTime();
+    const tightWave = allMatchedDocs.filter(
+      (d) => latestEpoch - new Date(d.published_at!).getTime() <= 48 * 3600 * 1000
+    );
+    const mediumWave = allMatchedDocs.filter(
+      (d) => latestEpoch - new Date(d.published_at!).getTime() <= 7 * 24 * 3600 * 1000
+    );
+    const matchedDocs =
+      tightWave.length >= 2 ? tightWave : mediumWave.length >= 2 ? mediumWave : allMatchedDocs.slice(0, 6);
+
+    // Sortowanie chronologiczne (od sygnału początkowego tej fali do najnowszego)
     matchedDocs.sort((a, b) => {
-      const timeA = a.published_at ? new Date(a.published_at).getTime() : new Date(a.fetched_at).getTime();
-      const timeB = b.published_at ? new Date(b.published_at).getTime() : new Date(b.fetched_at).getTime();
+      const timeA = new Date(a.published_at!).getTime();
+      const timeB = new Date(b.published_at!).getTime();
       return timeA - timeB;
     });
 
     const firstDoc = matchedDocs[0];
     const lastDoc = matchedDocs[matchedDocs.length - 1];
 
-    const firstTime = firstDoc.published_at || firstDoc.fetched_at;
-    const lastTime = lastDoc.published_at || lastDoc.fetched_at;
+    const firstTime = firstDoc.published_at!;
+    const lastTime = lastDoc.published_at!;
     const firstEpoch = new Date(firstTime).getTime();
 
     // Obliczenie Sparks Score
@@ -138,6 +150,9 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
     dbRepo.upsertEvent(eventRecord);
     clustersCreated++;
 
+    // Wyczyść poprzednie powiązania dokumentów dla tego wydarzenia przed ponownym zbudowaniem fali
+    dbRepo.clearEventDocuments(eventRecord.id);
+
     // Łączenie dokumentów w łańcuch dyfuzji
     for (let i = 0; i < matchedDocs.length; i++) {
       const doc = matchedDocs[i];
@@ -149,6 +164,10 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
         step = "origin";
       } else if (doc.is_orlen_official) {
         step = "rebuttal";
+      } else if (doc.is_labor_signal) {
+        step = "labor_signal";
+      } else if (doc.source_type === "media_industry") {
+        step = "industry_media";
       } else if (doc.source_type === "media_general") {
         step = "national_media";
       } else if (doc.source_type === "social_media") {
@@ -179,7 +198,7 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
         evidence_list: matchedDocs.slice(0, 3).map((d) => `"${d.title}" (${d.source_name})`),
         is_active: true,
         acknowledged_at: null,
-        created_at: new Date().toISOString(),
+        created_at: lastTime,
       });
       alertsCreated++;
     }

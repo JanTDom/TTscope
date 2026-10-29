@@ -138,7 +138,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_pgnig",
       name: "PGNiG / Gaz i Wydobycie (Grupa ORLEN) — Radar Informacyjny",
-      category: "official_orlen",
+      category: "media_industry",
       subgroup: "pgnig",
       domain: "pgnig.pl",
       url: "https://pgnig.pl",
@@ -167,7 +167,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_pgnig_upstream",
       name: "PGNiG Upstream Norway / Morze Północne (Grupa ORLEN)",
-      category: "official_orlen",
+      category: "media_industry",
       subgroup: "pgnig",
       domain: "orlenupstream.no",
       url: "https://news.google.com",
@@ -196,7 +196,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_psg_gaz",
       name: "Polska Spółka Gazownictwa (PSG) — Dystrybucja Gazu",
-      category: "official_orlen",
+      category: "media_industry",
       subgroup: "psg",
       domain: "psgaz.pl",
       url: "https://psgaz.pl",
@@ -225,7 +225,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_pgnig_termika",
       name: "PGNiG Termika — Ciepłownictwo i Elektrociepłownie",
-      category: "official_orlen",
+      category: "media_industry",
       subgroup: "termika",
       domain: "termika.pgnig.pl",
       url: "https://termika.pgnig.pl",
@@ -254,7 +254,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_anwil",
       name: "ANWIL Włocławek (Grupa ORLEN) — Radar Informacyjny",
-      category: "official_orlen",
+      category: "media_regional",
       subgroup: "wloclawek",
       domain: "anwil.pl",
       url: "https://anwil.pl",
@@ -283,7 +283,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_baltic_power",
       name: "Baltic Power — Morska Farma Wiatrowa Offshore",
-      category: "official_orlen",
+      category: "media_industry",
       subgroup: "baltic_power",
       domain: "balticpower.pl",
       url: "https://balticpower.pl",
@@ -312,7 +312,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_orlen_logistics",
       name: "Logistyka i Transport: ORLEN Transport, KolTrans, Paliwa",
-      category: "official_orlen",
+      category: "media_industry",
       subgroup: "logistyka",
       domain: "orlen.pl",
       url: "https://orlen.pl",
@@ -341,7 +341,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_orlen_unipetrol_cz",
       name: "ORLEN Unipetrol Litvínov & Kralupy (Czechy)",
-      category: "official_orlen",
+      category: "media_regional",
       subgroup: "unipetrol",
       domain: "orlenunipetrol.cz",
       url: "https://orlenunipetrol.cz",
@@ -370,7 +370,7 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
     source: {
       id: "src_gnews_orlen_lietuva_lt",
       name: "ORLEN Lietuva Rafineria Możejki (Litwa)",
-      category: "official_orlen",
+      category: "media_regional",
       subgroup: "lietuva",
       domain: "orlenlietuva.lt",
       url: "https://orlenlietuva.lt",
@@ -1256,8 +1256,8 @@ export const SOURCES_REGISTRY: SourceDefinition[] = [
   {
     source: {
       id: "src_anwil_official",
-      name: "ANWIL S.A. Włocławek (Grupa ORLEN) — Komunikaty",
-      category: "official_orlen",
+      name: "ANWIL Włocławek — Informacje i Publikacje",
+      category: "media_regional",
       subgroup: "wloclawek",
       domain: "anwil.orlen.pl",
       url: "https://anwil.orlen.pl/",

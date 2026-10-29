@@ -38,16 +38,16 @@ export function isLaborSignal(text: string): boolean {
     "mzzprc",
     "spór zbiorowy",
     "spor zbiorowy",
-    "płac",
-    "podwyżk",
+    "podwyżki płac",
+    "podwyżek płac",
     "wynagrodzen",
     "załog",
     "pracownik",
     "strajk",
-    "referendum",
-    "postulaty",
+    "referendum strajkowe",
+    "postulaty płacowe",
     "bhp",
-    "inspekcj",
+    "inspekcja pracy",
     "zwolnien",
     "układ zbiorowy",
   ];
@@ -171,7 +171,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
           canonical_url: item.link,
           source_name: source.name,
           author: item.author || "Biuro Prasowe ORLEN S.A.",
-          published_at: item.pubDate || new Date().toISOString(),
+          published_at: item.pubDate || null,
           fetched_at: new Date().toISOString(),
           content: item.content,
           excerpt: item.excerpt || null,
@@ -181,7 +181,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
           processing_status: "parsed",
           licensing_status: "fair_use_public_osint",
           error_info: null,
-          facility_location: detectFacilityLocation(combinedText) || "Płock",
+          facility_location: detectFacilityLocation(combinedText),
           is_orlen_official: true,
           is_labor_signal: isLaborSignal(combinedText),
           is_local_signal: isLocalSignal(combinedText),
@@ -306,27 +306,41 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
         .update(item.title.trim().toLowerCase() + "\n" + item.content.trim().slice(0, 1000))
         .digest("hex");
 
+      // Rozpoznanie rzeczywistego wydawcy w przypadku agregowanych strumieni RSS
+      const resolvedSourceName =
+        item.publisherName && item.publisherName.length > 1
+          ? `${item.publisherName} (${source.subgroup ? source.subgroup.toUpperCase() : "Radar"})`
+          : source.name;
+
+      // Dokument jest oficjalnym komunikatem ORLEN wyłącznie wtedy, gdy pochodzi z bezpośredniego kanału oficjalnego
+      const isDirectOfficialChannel = [
+        "src_orlen_newsroom",
+        "src_orlen_espi",
+        "src_energa_media",
+        "src_osge_smr",
+      ].includes(source.id);
+
       const doc: Document = {
         id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         source_id: source.id,
         title: item.title,
         url: item.link,
         canonical_url: item.link,
-        source_name: source.name,
-        author: item.author || null,
+        source_name: resolvedSourceName,
+        author: item.author || item.publisherName || null,
         published_at: item.pubDate || null,
         fetched_at: new Date().toISOString(),
         content: item.content,
         excerpt: item.excerpt || null,
         language: "pl",
-        source_type: source.category,
+        source_type: isDirectOfficialChannel ? "official_orlen" : source.category,
         content_hash: contentHash,
         processing_status: "parsed",
         licensing_status: "fair_use_public_osint",
         error_info: null,
         facility_location: detectFacilityLocation(combinedText),
-        is_orlen_official: source.category === "official_orlen",
-        is_labor_signal: isLaborSignal(combinedText),
+        is_orlen_official: isDirectOfficialChannel,
+        is_labor_signal: source.category === "internal_labor" || isLaborSignal(combinedText),
         is_local_signal: isLocalSignal(combinedText),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

@@ -6,6 +6,7 @@ export interface ParsedFeedItem {
   guid?: string;
   pubDate?: string;
   author?: string;
+  publisherName?: string;
   content: string;
   excerpt?: string;
 }
@@ -92,6 +93,7 @@ export function parseRssOrAtom(xmlContent: string): ParsedFeedItem[] {
       );
       const pubDate = item.pubDate || item.date || item["dc:date"];
       const author = cleanText(item.author || item["dc:creator"] || "");
+      const publisherName = cleanText(item.source?.["#text"] || item.source || "");
 
       if (title && link) {
         items.push({
@@ -100,6 +102,7 @@ export function parseRssOrAtom(xmlContent: string): ParsedFeedItem[] {
           guid: item.guid?.__cdata || item.guid || link,
           pubDate: parseFlexibleDate(pubDate),
           author: author || undefined,
+          publisherName: publisherName || undefined,
           content: content || title,
           excerpt: content.length > 280 ? content.slice(0, 280) + "..." : content,
         });
