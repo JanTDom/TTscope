@@ -2,6 +2,7 @@
   "name": "ttscope",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Profesjonalny system OSINT, monitoringu mediów i wczesnego wykrywania kryzysów Grupy ORLEN",
   "scripts": {
     "dev": "next dev",
