@@ -33,7 +33,7 @@ export default async function OrlenDiffPage({ searchParams }: PageProps) {
   const { documents } = await dbRepo.getDocuments({
     publishedFrom: timeRange.fromIso,
     publishedTo: timeRange.toIso,
-    limit: 300,
+    limit: 500,
   });
 
   const officialDocs = documents.filter((d) => d.is_orlen_official);

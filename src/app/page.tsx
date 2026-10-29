@@ -76,7 +76,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       dbRepo.getDocuments({
         publishedFrom: timeRange.fromIso,
         publishedTo: timeRange.toIso,
-        limit: 250,
+        limit: 500,
       }),
       dbRepo.getPublicationRhythmRows(timeRange.fromIso, timeRange.toIso),
       dbRepo.getTopPublishers(timeRange.fromIso, 6, timeRange.toIso),
@@ -342,7 +342,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
                 Brak zarejestrowanych wydarzeń w wybranym przedziale czasowym.
               </div>
             ) : (
-              events.slice(0, 6).map((evt) => (
+              events.slice(0, 12).map((evt) => (
                 <Link
                   key={evt.id}
                   href={`/events/${evt.id}`}

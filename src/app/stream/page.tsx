@@ -33,7 +33,7 @@ import {
   type TimeRangePreset,
 } from "@/lib/analytics/time-ranges";
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 250;
 
 interface DayGroup {
   dateKey: string;
@@ -107,6 +107,7 @@ function StreamContent() {
   const [timeRange, setTimeRange] = useState<TimeRangePreset>(
     (searchParams.get("time_range") as TimeRangePreset) || "24h"
   );
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
@@ -221,6 +222,20 @@ function StreamContent() {
   // Grupowanie dokumentów po dniach (kalendarz warszawski)
   const dayGroups = useMemo(() => groupDocumentsByDay(documents), [documents]);
 
+  const availableDays = useMemo(() => {
+    return dayGroups.map((g) => ({
+      key: g.dateKey,
+      label: g.label,
+      shortLabel: g.dateKey !== "unknown" ? `${g.dateKey.slice(8, 10)}.${g.dateKey.slice(5, 7)}` : "Inne",
+      count: g.documents.length,
+    }));
+  }, [dayGroups]);
+
+  const filteredDayGroups = useMemo(() => {
+    if (!selectedDay) return dayGroups;
+    return dayGroups.filter((g) => g.dateKey === selectedDay);
+  }, [dayGroups, selectedDay]);
+
   return (
     <div className="space-y-6">
       {/* Pasek nagłówkowy z nadrzędnym selektorem czasu */}
@@ -273,7 +288,7 @@ function StreamContent() {
               className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-semibold transition-all disabled:opacity-50 flex items-center gap-1.5"
             >
               <ArrowDownCircle className="w-3.5 h-3.5 text-cyan-400" />
-              <span>{loadingMore ? "Wczytywanie..." : `Wczytaj kolejne 100 (+${Math.min(BATCH_SIZE, total - documents.length)})`}</span>
+              <span>{loadingMore ? "Wczytywanie..." : `Wczytaj kolejne 250 (+${Math.min(BATCH_SIZE, total - documents.length)})`}</span>
             </button>
             <button
               onClick={() => fetchDocs(false, true)}
@@ -285,6 +300,50 @@ function StreamContent() {
           </div>
         )}
       </div>
+
+      {/* Pasek wyboru konkretnego dnia w oknie */}
+      {availableDays.length > 1 && (
+        <div className="flex items-center gap-1.5 flex-wrap px-4 py-2.5 bg-[#040e1c] rounded-xl border border-cyan-500/25 text-xs">
+          <div className="flex items-center gap-1.5 text-slate-400 font-mono text-[11px] uppercase mr-1">
+            <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Wybierz dzień:</span>
+          </div>
+
+          <button
+            onClick={() => setSelectedDay(null)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+              selectedDay === null
+                ? "bg-cyan-400 text-slate-950 shadow-[0_0_10px_rgba(0,229,255,0.35)] font-bold"
+                : "text-slate-300 hover:text-white bg-white/5 hover:bg-white/10"
+            }`}
+          >
+            <span>Wszystkie dni w oknie</span>
+            <span className="text-[10px] opacity-75 font-mono">({documents.length})</span>
+          </button>
+
+          {availableDays.slice(0, 14).map((d) => (
+            <button
+              key={d.key}
+              onClick={() => setSelectedDay(d.key)}
+              className={`px-2 py-1 rounded-lg font-mono text-[11px] transition-all flex items-center gap-1 ${
+                selectedDay === d.key
+                  ? "bg-gradient-to-r from-cyan-400 to-sky-500 text-slate-950 font-bold shadow-[0_0_10px_rgba(0,229,255,0.35)]"
+                  : "text-slate-300 hover:text-white bg-white/5 hover:bg-white/10"
+              }`}
+              title={d.label}
+            >
+              <span>{d.shortLabel}</span>
+              <span className="text-[10px] opacity-70">({d.count})</span>
+            </button>
+          ))}
+
+          {availableDays.length > 14 && (
+            <span className="text-[10px] font-mono text-slate-500 px-1">
+              +{availableDays.length - 14} wcześniejszych dni
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Przełączniki kanałów komunikacji */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
@@ -523,7 +582,7 @@ function StreamContent() {
         </div>
       ) : (
         <div className="space-y-8">
-          {dayGroups.map((group) => (
+          {filteredDayGroups.map((group) => (
             <div key={group.dateKey} className="space-y-3">
               {/* Przyklejany nagłówek dnia z liczbą publikacji */}
               <div className="sticky top-2 z-10 flex items-center justify-between gap-3 bg-[#071932]/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-cyan-500/35 shadow-lg">
