@@ -11,6 +11,65 @@ export interface ParsedFeedItem {
   excerpt?: string;
 }
 
+const COMMON_NAMED_ENTITIES: Readonly<Record<string, string>> = {
+  quot: '"',
+  amp: "&",
+  apos: "'",
+  lt: "<",
+  gt: ">",
+  nbsp: " ",
+  bdquo: "„",
+  ldquo: "“",
+  rdquo: "”",
+  sbquo: "‚",
+  lsquo: "‘",
+  rsquo: "’",
+  laquo: "«",
+  raquo: "»",
+  hellip: "…",
+  ndash: "–",
+  mdash: "—",
+  bull: "•",
+  copy: "©",
+  reg: "®",
+  trade: "™",
+  euro: "€",
+  pound: "£",
+  yen: "¥",
+  deg: "°",
+  plusmn: "±",
+  times: "×",
+  divide: "÷",
+  micro: "µ",
+  middot: "·",
+};
+
+/**
+ * Pełne dekodowanie encji HTML:
+ * 1. Numeryczne dziesiętne (np. &#8222; -> „, &#8221; -> ”, &#8230; -> …)
+ * 2. Numeryczne szesnastkowe (np. &#x201e; -> „, &#x1f4ca; -> 📊)
+ * 3. Nazwane (np. &bdquo;, &rdquo;, &amp;, &quot;, &nbsp;)
+ */
+export function decodeHtmlEntities(text: string): string {
+  if (!text) return "";
+  return text
+    // Numeryczne dziesiętne
+    .replace(/&#(\d+);?/g, (_, dec) => {
+      const code = parseInt(dec, 10);
+      return code > 0 && code < 0x10ffff ? String.fromCodePoint(code) : "";
+    })
+    // Numeryczne szesnastkowe
+    .replace(/&#x([0-9a-f]+);?/gi, (_, hex) => {
+      const code = parseInt(hex, 16);
+      return code > 0 && code < 0x10ffff ? String.fromCodePoint(code) : "";
+    })
+    // Nazwane
+    .replace(/&([a-z0-9]+);/gi, (full, name) => {
+      const lower = name.toLowerCase();
+      return COMMON_NAMED_ENTITIES[lower] || full;
+    });
+}
+
 export function cleanText(htmlOrText: unknown): string {
   if (!htmlOrText) return "";
   let str = "";
@@ -23,19 +82,18 @@ export function cleanText(htmlOrText: unknown): string {
     str = String(htmlOrText);
   }
 
-  return str
+  // 1. Usunięcie CDATA i bloków technicznych
+  str = str
     .replace(/<!\[CDATA\[(.*?)\]\]>/gs, "$1")
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/<[^>]+>/g, " ");
+
+  // 2. Dekodowanie encji HTML
+  str = decodeHtmlEntities(str);
+
+  // 3. Normalizacja białych znaków i usunięcie zbędnych spacji
+  return str.replace(/\s+/g, " ").trim();
 }
 
 export function parseFlexibleDate(rawDate: unknown): string | undefined {
