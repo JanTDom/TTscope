@@ -4,17 +4,22 @@ import { useState, useEffect } from "react";
 import { KeyRound, ArrowRight, AlertCircle, Lock, ShieldCheck } from "lucide-react";
 
 export function SessionAuthGate({ children }: { children: React.ReactNode }) {
-  // Sprawdzamy czy sesja została już odblokowana w bieżącej karcie przeglądarki
-  const [isUnlocked, setIsUnlocked] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("ttscope_unlocked") === "true";
-    }
-    return false;
-  });
+  // Konsola ZAWSZE startuje zablokowana (false).
+  // Brak automatycznego odblokowywania z pamięci (sessionStorage/localStorage)
+  // zapobiega zjawisku samoczynnego znikania formularza przed wpisaniem hasła.
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
 
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Czyszczenie wszelkich pozostałości po pamięci podręcznej przy starcie
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("ttscope_unlocked");
+      localStorage.removeItem("ttscope_unlocked");
+    }
+  }, []);
 
   // Nasłuchiwanie na polecenie blokady konsoli (np. kliknięcie przycisku "Zablokuj")
   useEffect(() => {
@@ -24,6 +29,7 @@ export function SessionAuthGate({ children }: { children: React.ReactNode }) {
       setError(null);
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("ttscope_unlocked");
+        localStorage.removeItem("ttscope_unlocked");
       }
     };
 
@@ -47,9 +53,7 @@ export function SessionAuthGate({ children }: { children: React.ReactNode }) {
       if (data.ok) {
         setIsUnlocked(true);
         setError(null);
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("ttscope_unlocked", "true");
-        }
+        setPassword("");
       } else {
         setError(data.error || "Nieprawidłowe hasło dostępu");
       }
@@ -104,12 +108,15 @@ export function SessionAuthGate({ children }: { children: React.ReactNode }) {
                 <KeyRound className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-cyan-400/70" />
                 <input
                   type="password"
+                  name="auth_key_temp"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Wprowadź hasło autoryzacyjne..."
                   required
                   autoFocus
                   autoComplete="new-password"
+                  data-lpignore="true"
+                  data-1p-ignore="true"
                   className="w-full bg-[#020712] border border-cyan-500/40 rounded-xl pl-10 pr-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 font-mono transition-all"
                 />
               </div>
