@@ -139,7 +139,7 @@ export function getSqliteDb(): Database.Database {
   if (process.env.VERCEL && defaultDbPath !== ":memory:") {
     const tmpDbPath = path.join("/tmp", "ttscope.db");
     try {
-      if (!fs.existsSync(tmpDbPath) && fs.existsSync(defaultDbPath)) {
+      if (fs.existsSync(defaultDbPath)) {
         fs.copyFileSync(defaultDbPath, tmpDbPath);
       }
       if (fs.existsSync(tmpDbPath)) {
