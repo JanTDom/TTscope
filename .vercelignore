@@ -1,0 +1,15 @@
+# Vercel deployment ignore
+# Prevents bundle bloat (>50MB zip / >250MB uncompressed)
+*.gz
+*.json.gz
+*.tar
+*.zip
+backups/
+tests/
+__tests__/
+docs/
+.agents/
+.git/
+.github/
+*.md
+!README.md

@@ -1,0 +1,21 @@
+# Reguły Rzemiosła Layoutu i Interfejsu (TTscope UI Craft)
+
+Niniejsze reguły obowiązują bezwzględnie przy tworzeniu widoków, komponentów i stylów w TTscope:
+
+1. **Całkowity zakaz emotikonów w UI**:
+   - Nigdy nie używaj znaków emoji (🚀, 💡, ⚡, 🔥, ⚠️, 🚨) w interfejsie użytkownika, na kartach, przyciskach, badge'ach ani w nagłówkach.
+   - Używaj wyłącznie ikon Lucide SVG oraz typograficznych etykiet statusowych (`font-mono text-[11px] tracking-wider uppercase`).
+2. **Polska kultura typograficzna**:
+   - Wszystkie nagłówki (H1–H4), tytuły kart i sekcji formatuj według zasad polskiej gramatyki (Sentence case: wielka litera tylko na początku i w nazwach własnych).
+   - Skrótowce zawsze wielkimi literami: **ORLEN**, **PAP**, **BIP**, **ESPI**, **EBI**, **TK**, **SN**, **KRS**, **PKW**, **TVP**, **PiS**, **PO**, **UE**, **MSWiA**, **KAS**, **BHP**, **MZZPRC**, **NSZZ**.
+3. **Zasada czystego stanu (Clean State Rule)**:
+   - Żadnych sztucznych danych (mocków) w widokach produkcyjnych.
+   - Każdy komponent posiada 3 stany:
+     1. Szkielet ładowania (`Loading Skeleton`).
+     2. Pusty stan (`Graceful Zero-State`) z informacją i kontekstem.
+     3. Stan błędu (`Error Recovery`) z przyciskiem ponowienia.
+4. **Paleta barw i estetyka**:
+   - Styl: Dark Editorial / Executive Command Center na bazie przestrzeni barw OKLCH.
+   - Tła: głęboki grafit i bazalt zamiast ostrej czerni; brak jaskrawych neonowych gradientów typowych dla szablonów AI.
+   - Dostępność: kontrast tekstu i wskaźników zgodny z normą WCAG 2.2 AA / AAA.
+   - Płynny ruch i obsługa `prefers-reduced-motion`.
