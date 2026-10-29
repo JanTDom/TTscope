@@ -7,6 +7,7 @@ import { LogoutButton } from "@/components/navigation/LogoutButton";
 import { GitFork, RefreshCw, Radar } from "lucide-react";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ttscope.pl"),
   title: "TTscope",
   description: "ttscope.pl",
   openGraph: {
@@ -15,11 +16,21 @@ export const metadata: Metadata = {
     url: "https://ttscope.pl",
     siteName: "TTscope",
     type: "website",
+    images: [
+      {
+        url: "https://ttscope.pl/icon.png",
+        width: 512,
+        height: 512,
+        alt: "TTscope",
+        type: "image/png",
+      },
+    ],
   },
   twitter: {
     card: "summary",
     title: "TTscope",
     description: "ttscope.pl",
+    images: ["https://ttscope.pl/icon.png"],
   },
   icons: {
     icon: [
