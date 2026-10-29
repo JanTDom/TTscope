@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { dbRepo } from "@/lib/db";
-import { GitFork, Clock, ArrowRight, ExternalLink, ShieldCheck } from "lucide-react";
+import { GitFork, Clock, ArrowRight, Layers, Activity, Flame } from "lucide-react";
+import { DiffusionFlowGraph } from "@/components/DiffusionFlowGraph";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,14 +13,46 @@ export default async function DiffusionPage() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-border pb-5">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
-            <GitFork className="w-5 h-5 text-neutral-400" />
-            Matryca dyfuzji i rozprzestrzeniania narracji
+          <h2 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2.5">
+            <GitFork className="w-5 h-5 text-cyan-400" />
+            Ścieżki przepływu i dyfuzji informacji (komunikat → publikacje medialne)
           </h2>
-          <p className="text-xs text-neutral-400 mt-1">
-            Wizualizacja drogi informacji: od sygnału pierwotnego, przez media lokalne i branżowe, aż po media centralne.
+          <p className="text-xs text-slate-300 mt-1">
+            Graficzna wizualizacja rozprzestrzeniania się tematów: od sygnału pierwotnego, przez komunikaty Grupy ORLEN, aż po media lokalne i ogólnopolskie.
           </p>
         </div>
+
+        <div className="flex items-center gap-2 text-xs font-mono bg-cyan-950/50 border border-cyan-500/30 px-3 py-1.5 rounded-lg text-cyan-200">
+          <Activity className="w-3.5 h-3.5 text-cyan-400" />
+          Aktywne łańcuchy: <strong>{events.length}</strong>
+        </div>
+      </div>
+
+      {/* Legenda wizualna ścieżki */}
+      <div className="bg-surface/90 rounded-xl border border-surface-border p-4 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-6 flex-wrap text-xs">
+          <span className="text-slate-400 font-mono uppercase text-[11px]">Legenda węzłów:</span>
+          <span className="flex items-center gap-2 text-cyan-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-node-pulse" />
+            1. Sygnał pierwotny (Origin)
+          </span>
+          <span className="flex items-center gap-2 text-sky-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-sky-400" />
+            2. Oficjalny komunikat ORLEN
+          </span>
+          <span className="flex items-center gap-2 text-amber-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+            3. Sygnał związkowy / pracowniczy
+          </span>
+          <span className="flex items-center gap-2 text-indigo-300">
+            <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
+            4. Rezonans w mediach
+          </span>
+        </div>
+
+        <span className="text-[11px] font-mono text-cyan-400/80">
+          Impulsy świetlne obrazują kierunek i opóźnienie czasowe (\(\Delta t\))
+        </span>
       </div>
 
       <div className="space-y-6">
@@ -27,55 +61,56 @@ export default async function DiffusionPage() {
           const docs = eventDetails?.documents || [];
 
           return (
-            <div key={evt.id} className="bg-surface p-6 rounded-xl border border-surface-border space-y-4">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div>
-                  <h3 className="text-base font-semibold text-white">{evt.title}</h3>
-                  <span className="text-xs text-neutral-400">
-                    Rozpiętość czasowa: {new Date(evt.first_detected_at).toLocaleTimeString("pl-PL")} → {new Date(evt.last_signal_at).toLocaleTimeString("pl-PL")}
-                  </span>
-                </div>
-
-                <div className="text-xs font-mono bg-white/10 px-2.5 py-1 rounded text-neutral-200">
-                  Łańcuch publikacji: {docs.length}
-                </div>
-              </div>
-
-              {/* Ścieżka przepływu */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 pt-2">
-                {docs.slice(0, 4).map((d, index) => (
-                  <div
-                    key={d.id}
-                    className="bg-surface-muted p-4 rounded-lg border border-surface-border flex flex-col justify-between relative"
-                  >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-[10px] font-mono text-neutral-400">
-                        <span className="uppercase bg-neutral-800 px-1.5 py-0.5 rounded">
-                          Krok {index + 1}: {d.diffusion_step}
-                        </span>
-                        <span>{d.published_at ? new Date(d.published_at).toLocaleTimeString("pl-PL") : ""}</span>
-                      </div>
-
-                      <h4 className="text-xs font-medium text-white line-clamp-2 hover:text-red-300">
-                        <a href={d.url} target="_blank" rel="noopener noreferrer">
-                          {d.title}
-                        </a>
-                      </h4>
-
-                      <div className="text-[11px] text-neutral-400">
-                        Źródło: <strong>{d.source_name}</strong>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 pt-2 border-t border-surface-border text-[10px] text-neutral-500">
-                      Typ relacji:{" "}
-                      <span className="text-neutral-300 font-medium">
-                        {index === 0 ? "Sygnał pierwotny (Origin)" : "Wykryte podobieństwo treści"}
-                      </span>
-                    </div>
+            <div
+              key={evt.id}
+              className="bg-surface/95 p-6 rounded-2xl border border-surface-border shadow-[0_8px_30px_rgba(0,0,0,0.4)] space-y-4 hover:border-cyan-500/40 transition-colors"
+            >
+              <div className="flex items-start md:items-center justify-between gap-4 flex-col md:flex-row border-b border-surface-border/70 pb-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="text-[10px] font-mono uppercase bg-cyan-500/15 border border-cyan-400/30 px-2 py-0.5 rounded text-cyan-300">
+                      {evt.event_stage.replace("_", " ")}
+                    </span>
+                    <h3 className="text-base font-semibold text-white">{evt.title}</h3>
                   </div>
-                ))}
+                  <p className="text-xs text-slate-300 flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                    Pierwszy sygnał: {new Date(evt.first_detected_at).toLocaleString("pl-PL")} | Ostatnia aktywność:{" "}
+                    {new Date(evt.last_signal_at).toLocaleString("pl-PL")}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 self-end md:self-center">
+                  <div className="text-right">
+                    <span className="text-[10px] font-mono uppercase text-slate-400 block">Sparks Index</span>
+                    <span
+                      className={`text-lg font-bold font-mono ${
+                        evt.sparks_score >= 60
+                          ? "text-rose-400"
+                          : evt.sparks_score >= 40
+                          ? "text-amber-300"
+                          : "text-emerald-400"
+                      }`}
+                    >
+                      {evt.sparks_score.toFixed(0)}/100
+                    </span>
+                  </div>
+
+                  <div className="text-xs font-mono bg-cyan-950/60 border border-cyan-500/30 px-3 py-1.5 rounded-lg text-cyan-200">
+                    Publikacje w łańcuchu: <strong>{docs.length}</strong>
+                  </div>
+
+                  <Link
+                    href={`/events/${evt.id}`}
+                    className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-cyan-500/20 border border-white/10 hover:border-cyan-400/40 text-xs text-cyan-300 flex items-center gap-1 transition-all"
+                  >
+                    Pełna oś <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
+
+              {/* Graficzna, animowana ścieżka przepływu */}
+              <DiffusionFlowGraph documents={docs} maxNodes={4} />
             </div>
           );
         })}

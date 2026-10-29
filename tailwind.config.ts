@@ -17,16 +17,22 @@ const config: Config = {
           muted: "var(--surface-muted)",
           border: "var(--surface-border)",
         },
+        brand: {
+          cyan: "#00e5ff",
+          blue: "#0284c7",
+          navy: "#061124",
+          glow: "rgba(0, 229, 255, 0.25)",
+        },
         orlen: {
-          red: "#d32f2f",
-          darkRed: "#9a0007",
-          gray: "#2c3437",
+          red: "#e11d48",
+          darkRed: "#9f1239",
+          gray: "#1e293b",
         },
         spark: {
-          routine: "oklch(0.68 0.14 150)", // szmaragd
+          routine: "oklch(0.72 0.16 165)", // szmaragdowo-turkusowy
           monitored: "oklch(0.75 0.16 85)", // bursztyn
-          sparks: "oklch(0.65 0.20 40)",    // oranż
-          critical: "oklch(0.60 0.24 25)",  // szkarłat
+          sparks: "oklch(0.68 0.20 45)",    // oranż
+          critical: "oklch(0.62 0.24 25)",  // szkarłat
         },
       },
       fontFamily: {
@@ -38,6 +44,20 @@ const config: Config = {
           "Consolas",
           "monospace",
         ],
+      },
+      keyframes: {
+        flowPulse: {
+          "0%": { strokeDashoffset: "24" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        radarSweep: {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
+      },
+      animation: {
+        "flow-pulse": "flowPulse 1.4s linear infinite",
+        "radar-sweep": "radarSweep 8s linear infinite",
       },
     },
   },

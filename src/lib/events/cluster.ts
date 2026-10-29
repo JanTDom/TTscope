@@ -45,6 +45,29 @@ const TOPIC_RULES: TopicClusterRule[] = [
     keywords: ["trzebinia", "orlen południe", "biodiesel", "biorafiner"],
     facilityLocation: "Trzebinia",
   },
+  {
+    id: "cluster_baltic_power_offshore",
+    title: "Morska energetyka wiatrowa — projekt Baltic Power na Bałtyku",
+    keywords: ["baltic power", "morska farma", "turbiny", "wiatrowa", "offshore"],
+    facilityLocation: "Gdańsk",
+  },
+  {
+    id: "cluster_osge_smr_nuclear",
+    title: "Rozwój małych reaktorów jądrowych SMR — ORLEN Synthos Green Energy",
+    keywords: ["osge", "smr", "reaktor", "bwrx-300", "jądrow"],
+    facilityLocation: "Włocławek",
+  },
+  {
+    id: "cluster_labor_unions_negotiations",
+    title: "Dialog społeczny, postulaty płacowe i aktywność związków zawodowych",
+    keywords: ["solidarność", "mzzprc", "związk", "płac", "spór zbiorowy", "załog"],
+    facilityLocation: "Płock",
+  },
+  {
+    id: "cluster_upstream_norway_lng",
+    title: "Wydobycie gazu na Szelfie Norweskim i handel globalny LNG",
+    keywords: ["upstream norway", "afrodyta", "morzu północnym", "lng", "singapur", "equinor"],
+  },
 ];
 
 export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsCreated: number } {

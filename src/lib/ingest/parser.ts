@@ -37,6 +37,34 @@ export function cleanText(htmlOrText: unknown): string {
     .trim();
 }
 
+export function parseFlexibleDate(rawDate: unknown): string | undefined {
+  if (!rawDate) return undefined;
+  const str = String(rawDate).trim();
+  if (!str) return undefined;
+
+  // 1. Standardowe parsowanie ISO / RFC822
+  const direct = new Date(str);
+  if (!isNaN(direct.getTime())) {
+    return direct.toISOString();
+  }
+
+  // 2. Format "HH:mm DD.MM.YYYY" lub "DD.MM.YYYY HH:mm" lub "DD.MM.YYYY"
+  const plMatch = str.match(/(?:(\d{1,2}):(\d{2})\s+)?(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (plMatch) {
+    const hours = Number(plMatch[1] || plMatch[6] || 12);
+    const minutes = Number(plMatch[2] || plMatch[7] || 0);
+    const day = Number(plMatch[3]);
+    const month = Number(plMatch[4]) - 1;
+    const year = Number(plMatch[5]);
+    const customDate = new Date(year, month, day, hours, minutes, 0);
+    if (!isNaN(customDate.getTime())) {
+      return customDate.toISOString();
+    }
+  }
+
+  return undefined;
+}
+
 export function parseRssOrAtom(xmlContent: string): ParsedFeedItem[] {
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -70,7 +98,7 @@ export function parseRssOrAtom(xmlContent: string): ParsedFeedItem[] {
           title,
           link,
           guid: item.guid?.__cdata || item.guid || link,
-          pubDate: pubDate ? new Date(pubDate).toISOString() : undefined,
+          pubDate: parseFlexibleDate(pubDate),
           author: author || undefined,
           content: content || title,
           excerpt: content.length > 280 ? content.slice(0, 280) + "..." : content,
@@ -113,7 +141,7 @@ export function parseRssOrAtom(xmlContent: string): ParsedFeedItem[] {
           title,
           link,
           guid: entry.id || link,
-          pubDate: pubDate ? new Date(pubDate).toISOString() : undefined,
+          pubDate: parseFlexibleDate(pubDate),
           author: author || undefined,
           content: content || title,
           excerpt: content.length > 280 ? content.slice(0, 280) + "..." : content,
