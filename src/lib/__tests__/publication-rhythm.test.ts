@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDailyRhythm,
+  buildHourlyRhythm,
   classifyChannel,
   isCommunicationChannel,
   lastDayKeys,
@@ -67,14 +68,28 @@ describe("classifyChannel i buildDailyRhythm", () => {
       ],
       ["2026-10-28", "2026-10-29"]
     );
-    expect(rhythm).toEqual([
-      { day: "2026-10-28", official: 0, labor: 0, external: 1 },
-      { day: "2026-10-29", official: 1, labor: 1, external: 0 },
+    expect(rhythm.map(r => ({ key: r.key, official: r.official, labor: r.labor, external: r.external }))).toEqual([
+      { key: "2026-10-28", official: 0, labor: 0, external: 1 },
+      { key: "2026-10-29", official: 1, labor: 1, external: 0 },
     ]);
   });
 
   it("waliduje nazwę kanału z adresu URL", () => {
     expect(isCommunicationChannel("labor")).toBe(true);
     expect(isCommunicationChannel("DROP TABLE")).toBe(false);
+  });
+
+  it("buduje kubełki godzinowe dla widoku krótkoterminowego", () => {
+    const from = "2026-10-29T10:00:00.000Z";
+    const to = "2026-10-29T13:00:00.000Z";
+    const rows = [
+      { published_at: "2026-10-29T10:15:00.000Z", is_orlen_official: true, is_labor_signal: false },
+      { published_at: "2026-10-29T11:45:00.000Z", is_orlen_official: false, is_labor_signal: true },
+    ];
+    const buckets = buildHourlyRhythm(rows, from, to);
+    expect(buckets.length).toBe(3);
+    expect(buckets[0].official).toBe(1);
+    expect(buckets[1].labor).toBe(1);
+    expect(buckets[2].official).toBe(0);
   });
 });

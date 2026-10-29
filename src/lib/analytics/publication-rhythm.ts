@@ -1,10 +1,12 @@
 /**
  * Agregacje rytmu publikacji liczone wyłącznie z zapisanych dokumentów.
- * Dni są wyznaczane w strefie Europe/Warsaw, bo tak analityk czyta kalendarz.
+ * Wspiera agregację dobową (Daily) oraz godzinową (Hourly) dla krótszych okien (1h, 8h, 24h).
+ * Wszystkie ramy czasowe kalkulowane są w strefie Europe/Warsaw.
  */
 
 const ZONE = "Europe/Warsaw";
 const DAY_MS = 24 * 3600 * 1000;
+const HOUR_MS = 3600 * 1000;
 
 export const COMMUNICATION_CHANNELS = ["official", "labor", "external"] as const;
 export type CommunicationChannel = (typeof COMMUNICATION_CHANNELS)[number];
@@ -19,12 +21,18 @@ export interface RhythmSourceRow {
   is_labor_signal: boolean;
 }
 
-export interface DailyRhythmBucket {
-  day: string;
+export interface RhythmBucket {
+  key: string;       // YYYY-MM-DD lub YYYY-MM-DD HH:00
+  label: string;     // Etykieta wyświetlana na osi X (np. "14:00" lub "29.10")
+  fullLabel: string; // Pełny opis w tooltipie (np. "29.10.2026, godz. 14:00-14:59")
   official: number;
   labor: number;
   external: number;
+  fromIso: string;
+  toIso: string;
 }
+
+export type DailyRhythmBucket = RhythmBucket;
 
 /** Ten sam podział co w strefach komunikacji: oficjalne > związkowe > media. */
 export function classifyChannel(row: Pick<RhythmSourceRow, "is_orlen_official" | "is_labor_signal">): CommunicationChannel {
@@ -95,15 +103,100 @@ export function lastDayKeys(endDayKey: string, days: number): string[] {
   return keys;
 }
 
-export function buildDailyRhythm(rows: readonly RhythmSourceRow[], dayKeys: readonly string[]): DailyRhythmBucket[] {
-  const buckets = new Map<string, DailyRhythmBucket>(
-    dayKeys.map((day) => [day, { day, official: 0, labor: 0, external: 0 }])
-  );
+/** Buduje kubełki dobowe (dla widoku 7 dni, 30 dni lub wielodniowego od-do). */
+export function buildDailyRhythm(rows: readonly RhythmSourceRow[], dayKeys: readonly string[]): RhythmBucket[] {
+  const buckets = new Map<string, RhythmBucket>();
+
+  for (const day of dayKeys) {
+    const bounds = warsawDayBoundsUtc(day);
+    const parts = day.split("-");
+    const m = parts[1];
+    const d = parts[2];
+    buckets.set(day, {
+      key: day,
+      label: `${d}.${m}`,
+      fullLabel: `${d}.${m}.${parts[0]}`,
+      official: 0,
+      labor: 0,
+      external: 0,
+      fromIso: bounds.from,
+      toIso: bounds.to,
+    });
+  }
+
   for (const row of rows) {
     if (!row.published_at) continue;
     const key = warsawDayKey(row.published_at);
     const bucket = key ? buckets.get(key) : undefined;
     if (bucket) bucket[classifyChannel(row)] += 1;
   }
-  return dayKeys.map((day) => buckets.get(day) as DailyRhythmBucket);
+
+  return dayKeys.map((day) => buckets.get(day) as RhythmBucket);
+}
+
+/**
+ * Buduje kubełki godzinowe dla widoków krótkoterminowych (1h, 8h, 24h).
+ * Generuje ciągły przedział slotów godzinowych od `fromIso` do `toIso`.
+ */
+export function buildHourlyRhythm(
+  rows: readonly RhythmSourceRow[],
+  fromIso: string,
+  toIso: string
+): RhythmBucket[] {
+  const fromTime = new Date(fromIso).getTime();
+  const toTime = new Date(toIso).getTime();
+
+  // Zaokrąglenie w dół do pełnej godziny
+  const startHourEpoch = Math.floor(fromTime / HOUR_MS) * HOUR_MS;
+  const endHourEpoch = Math.ceil(toTime / HOUR_MS) * HOUR_MS;
+
+  const buckets: RhythmBucket[] = [];
+  const hourFormatter = new Intl.DateTimeFormat("pl-PL", {
+    timeZone: ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const fullFormatter = new Intl.DateTimeFormat("pl-PL", {
+    timeZone: ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  for (let t = startHourEpoch; t < endHourEpoch; t += HOUR_MS) {
+    const dStart = new Date(t);
+    const dEnd = new Date(t + HOUR_MS);
+    const key = dStart.toISOString().slice(0, 13);
+    const label = hourFormatter.format(dStart);
+    const fullLabel = `${fullFormatter.format(dStart)} - ${hourFormatter.format(dEnd)}`;
+
+    buckets.push({
+      key,
+      label,
+      fullLabel,
+      official: 0,
+      labor: 0,
+      external: 0,
+      fromIso: dStart.toISOString(),
+      toIso: dEnd.toISOString(),
+    });
+  }
+
+  for (const row of rows) {
+    if (!row.published_at) continue;
+    const pubTime = new Date(row.published_at).getTime();
+    if (pubTime < fromTime || pubTime > toTime) continue;
+
+    const slotEpoch = Math.floor(pubTime / HOUR_MS) * HOUR_MS;
+    const matched = buckets.find((b) => new Date(b.fromIso).getTime() === slotEpoch);
+    if (matched) {
+      matched[classifyChannel(row)] += 1;
+    }
+  }
+
+  return buckets;
 }

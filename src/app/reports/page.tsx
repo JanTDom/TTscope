@@ -1,134 +1,164 @@
 import { dbRepo } from "@/lib/db";
-import { FileText, Building2, Flame, ExternalLink, ShieldCheck } from "lucide-react";
-import { PrintButton } from "@/components/PrintButton";
+import { FileText, Printer, ShieldCheck, Clock, Flame, Building2, Radio } from "lucide-react";
 import { formatPublicationTime } from "@/lib/format/publication";
+import { resolveTimeRange } from "@/lib/analytics/time-ranges";
+import { GlobalTimeRangeSelector } from "@/components/navigation/GlobalTimeRangeSelector";
+import { PrintButton } from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function ReportsPage() {
-  const stats = dbRepo.getDashboardStats();
-  const events = dbRepo.getAllEvents();
-  const alerts = dbRepo.getActiveAlerts();
-  const { documents } = dbRepo.getDocuments({ limit: 10 });
-  const facilities = dbRepo.getAllFacilities();
+interface PageProps {
+  searchParams: Promise<{
+    time_range?: string;
+    from?: string;
+    to?: string;
+  }>;
+}
+
+export default async function ReportsPage({ searchParams }: PageProps) {
+  const resolvedParams = await searchParams;
+  const latestPublished = dbRepo.getDashboardStats().latestPublished || "2026-10-29T14:27:00.000Z";
+
+  const timeRange = resolveTimeRange(
+    {
+      preset: resolvedParams.time_range,
+      from: resolvedParams.from,
+      to: resolvedParams.to,
+    },
+    latestPublished
+  );
+
+  const stats = dbRepo.getDashboardStats({
+    from: timeRange.fromIso,
+    to: timeRange.toIso,
+  });
+
+  const events = dbRepo.getAllEvents({
+    from: timeRange.fromIso,
+    to: timeRange.toIso,
+  });
+
+  const alerts = dbRepo.getActiveAlerts({
+    from: timeRange.fromIso,
+    to: timeRange.toIso,
+  });
+
+  const { documents: recentDocs } = dbRepo.getDocuments({
+    publishedFrom: timeRange.fromIso,
+    publishedTo: timeRange.toIso,
+    limit: 20,
+  });
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-border pb-5">
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Pasek akcji z selektorem czasu */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-surface-border pb-5 no-print">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
-            <FileText className="w-5 h-5 text-neutral-400" />
-            Biuletyn wywiadowczy OSINT (Raport sytuacyjny)
+            <FileText className="w-5 h-5 text-cyan-400" />
+            Biuletyn sytuacyjny i raport wywiadowczy
           </h2>
-          <p className="text-xs text-neutral-400 mt-1">
-            Rzetelne zestawienie faktów, źródeł i oceny ryzyka oparte w 100% na danych z bazy.
+          <p className="text-xs text-slate-300 mt-1">
+            Aktywny zakres: <strong className="text-cyan-300 font-mono">{timeRange.label}</strong>{" "}
+            (od {formatPublicationTime(timeRange.fromIso)} do {formatPublicationTime(timeRange.toIso)}).
           </p>
         </div>
 
-        <PrintButton />
+        <div className="flex items-center gap-3 flex-wrap">
+          <GlobalTimeRangeSelector
+            currentPreset={timeRange.preset}
+            currentFrom={resolvedParams.from}
+            currentTo={resolvedParams.to}
+          />
+          <PrintButton />
+        </div>
       </div>
 
-      {/* Ciało Raportu */}
-      <div className="bg-surface p-8 rounded-xl border border-surface-border space-y-6 print:border-none print:p-0">
-        <div className="border-b border-surface-border pb-4">
-          <div className="flex items-center justify-between text-xs text-neutral-400 font-mono">
-            <span>DOKUMENT ANALITYCZNY TTSCOPE</span>
-            <span>DATA GENEROWANIA: {new Date().toLocaleString("pl-PL")}</span>
+      {/* Wydruk raportu */}
+      <div className="bg-surface p-8 rounded-2xl border border-surface-border space-y-8 shadow-lg print:border-none print:shadow-none print:p-0">
+        <div className="border-b border-surface-border pb-6 flex items-start justify-between flex-wrap gap-4">
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-[0.2em] text-cyan-400 mb-1">
+              DOKUMENT WYWIADOWCZY OSINT // POZIOM: OFICJALNY
+            </div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">
+              Biuletyn Wywiadu Medialnego i Monitoringu Kryzysowego
+            </h1>
+            <p className="text-xs text-slate-300 mt-1">
+              Podmiot monitorowany: Grupa ORLEN S.A. wraz ze spółkami zależnymi
+            </p>
           </div>
-          <h1 className="text-2xl font-bold text-white mt-2">
-            Biuletyn Sytuacyjny: Monitoring Grupy ORLEN
-          </h1>
-          <p className="text-xs text-neutral-300 mt-1">
-            Wydanie bieżące oparte wyłącznie na zindeksowanych publikacjach publicznych. Zero mocków.
-          </p>
-        </div>
 
-        {/* 1. Podsumowanie Liczbowe */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-white uppercase tracking-wider font-mono">
-            1. Stan bazy i statystyki monitoringu
-          </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div className="bg-surface-muted p-3 rounded-lg border border-surface-border">
-              <span className="text-neutral-400">Wszystkie dokumenty</span>
-              <div className="text-lg font-bold font-mono text-white mt-1">{stats.totalDocs}</div>
-            </div>
-            <div className="bg-surface-muted p-3 rounded-lg border border-surface-border">
-              <span className="text-neutral-400">Oficjalne komunikaty ORLEN</span>
-              <div className="text-lg font-bold font-mono text-cyan-300 mt-1">{stats.officialDocs}</div>
-            </div>
-            <div className="bg-surface-muted p-3 rounded-lg border border-surface-border">
-              <span className="text-neutral-400">Sygnały związkowe i załogi</span>
-              <div className="text-lg font-bold font-mono text-amber-300 mt-1">{stats.laborDocs}</div>
-            </div>
-            <div className="bg-surface-muted p-3 rounded-lg border border-surface-border">
-              <span className="text-neutral-400">Aktywne alerty</span>
-              <div className="text-lg font-bold font-mono text-red-400 mt-1">{stats.activeAlerts}</div>
-            </div>
+          <div className="text-right text-[11px] font-mono text-slate-400 space-y-1">
+            <div>OKNO ANALIZY: {timeRange.label.toUpperCase()}</div>
+            <div>OD: {formatPublicationTime(timeRange.fromIso)}</div>
+            <div>DO: {formatPublicationTime(timeRange.toIso)}</div>
           </div>
         </div>
 
-        {/* 2. Zidentyfikowane Wydarzenia i Iskrzenia */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-white uppercase tracking-wider font-mono">
-            2. Kluczowe wątki i ocena ryzyka (Sparks Score)
-          </h3>
-          <div className="space-y-3">
-            {events.map((evt) => (
-              <div key={evt.id} className="bg-surface-muted p-4 rounded-lg border border-surface-border space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-white">{evt.title}</span>
-                  <span className="font-mono text-neutral-400">
-                    Sparks Score: <strong>{evt.sparks_score.toFixed(0)}/100</strong>
-                  </span>
-                </div>
-                <p className="text-xs text-neutral-300">{evt.summary}</p>
-                <div className="text-[11px] text-neutral-400 pt-1 border-t border-surface-border flex items-center justify-between">
-                  <span>
-                    Stanowisko spółki:{" "}
-                    <strong className="text-neutral-200">
-                      {evt.has_orlen_responded ? "Odnotowano oficjalny komunikat" : "Brak oficjalnej odpowiedzi"}
-                    </strong>
-                  </span>
-                  <span className="font-mono">
-                    Pierwsza publikacja: {formatPublicationTime(evt.first_detected_at)}
-                  </span>
-                </div>
-              </div>
-            ))}
+        {/* Podsumowanie liczb w oknie */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="p-4 bg-surface-muted rounded-xl border border-surface-border">
+            <span className="text-[11px] text-slate-400 block">Publikacje w oknie</span>
+            <div className="text-2xl font-bold font-mono text-white mt-1">{stats.totalDocs}</div>
+          </div>
+          <div className="p-4 bg-surface-muted rounded-xl border border-surface-border">
+            <span className="text-[11px] text-slate-400 block">Komunikaty ORLEN</span>
+            <div className="text-2xl font-bold font-mono text-cyan-300 mt-1">{stats.officialDocs}</div>
+          </div>
+          <div className="p-4 bg-surface-muted rounded-xl border border-surface-border">
+            <span className="text-[11px] text-slate-400 block">Sygnały załogi / związki</span>
+            <div className="text-2xl font-bold font-mono text-amber-300 mt-1">{stats.laborSignalDocs}</div>
+          </div>
+          <div className="p-4 bg-surface-muted rounded-xl border border-surface-border">
+            <span className="text-[11px] text-slate-400 block">Alerty kryzysowe</span>
+            <div className="text-2xl font-bold font-mono text-rose-400 mt-1">{stats.activeAlerts}</div>
           </div>
         </div>
 
-        {/* 3. Przegląd Ostatnich Dowodów Źródłowych */}
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-white uppercase tracking-wider font-mono">
-            3. Przegląd ostatnich publikacji źródłowych
+        {/* Główne wątki w oknie */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 font-mono border-b border-surface-border pb-2">
+            1. Wątki tematyczne o najwyższym wskaźniku napięcia
           </h3>
-          <div className="space-y-2">
-            {documents.slice(0, 6).map((doc) => (
-              <div key={doc.id} className="text-xs border-b border-surface-border pb-2 flex items-start justify-between gap-3">
-                <div>
-                  <a
-                    href={doc.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-neutral-200 hover:text-red-300 inline-flex items-center gap-1"
-                  >
-                    <span>{doc.title}</span>
-                    <ExternalLink className="w-3 h-3 text-neutral-500 flex-shrink-0" />
-                  </a>
-                  <div className="text-[11px] text-neutral-400 mt-0.5">
-                    Wydawca: <strong className="text-cyan-200">{doc.source_name}</strong> | Godzina ukazania się:{" "}
-                    <strong className="text-white">
-                      {formatPublicationTime(doc.published_at)}
-                    </strong>
+          {events.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">Brak zarejestrowanych wątków w zadanym oknie.</p>
+          ) : (
+            <div className="space-y-3">
+              {events.slice(0, 5).map((evt, idx) => (
+                <div key={evt.id} className="p-4 bg-surface-muted rounded-xl border border-surface-border space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-white">#{idx + 1}. {evt.title}</span>
+                    <span className="font-mono text-cyan-300">Sparks Score: {evt.sparks_score.toFixed(0)}/100</span>
+                  </div>
+                  <p className="text-xs text-slate-300">{evt.summary}</p>
+                  <div className="text-[11px] text-slate-400 font-mono">
+                    Ostatnia publikacja: {formatPublicationTime(evt.last_signal_at)}
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                <span className="text-[10px] font-mono uppercase bg-surface-muted px-2 py-0.5 rounded text-neutral-400 flex-shrink-0">
-                  {doc.source_type}
-                </span>
+        {/* Ostatnie publikacje */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-300 font-mono border-b border-surface-border pb-2">
+            2. Kluczowe publikacje w zadanym horyzoncie ({recentDocs.length})
+          </h3>
+          <div className="space-y-2 text-xs">
+            {recentDocs.map((doc) => (
+              <div key={doc.id} className="p-3 bg-surface-muted rounded-lg border border-surface-border flex items-start justify-between gap-4">
+                <div>
+                  <div className="font-semibold text-white">{doc.title}</div>
+                  <div className="text-[11px] text-slate-400 mt-0.5">
+                    Źródło: {doc.source_name} ({doc.source_type})
+                  </div>
+                </div>
+                <div className="text-[11px] font-mono text-cyan-300 flex-shrink-0">
+                  {formatPublicationTime(doc.published_at)}
+                </div>
               </div>
             ))}
           </div>

@@ -445,10 +445,21 @@ export const dbRepo = {
     return db.prepare("SELECT * FROM facilities ORDER BY name").all() as Facility[];
   },
 
-  // Wydarzenia (Events)
-  getAllEvents(): Event[] {
+  // Wydarzenia (Events) z opcjonalnym zakresem czasowym
+  getAllEvents(options?: { from?: string; to?: string }): Event[] {
     const db = getSqliteDb();
-    const rows = db.prepare("SELECT * FROM events ORDER BY sparks_score DESC, last_signal_at DESC").all() as any[];
+    const conditions: string[] = [];
+    const params: any[] = [];
+    if (options?.from) {
+      conditions.push("last_signal_at >= ?");
+      params.push(options.from);
+    }
+    if (options?.to) {
+      conditions.push("last_signal_at <= ?");
+      params.push(options.to);
+    }
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const rows = db.prepare(`SELECT * FROM events ${where} ORDER BY sparks_score DESC, last_signal_at DESC`).all(...params) as any[];
     return rows.map((r) => ({
       ...r,
       has_orlen_responded: Boolean(r.has_orlen_responded),
@@ -545,10 +556,21 @@ export const dbRepo = {
     );
   },
 
-  // Alerty
-  getActiveAlerts(): Alert[] {
+  // Alerty z opcjonalnym zakresem czasowym
+  getActiveAlerts(options?: { from?: string; to?: string }): Alert[] {
     const db = getSqliteDb();
-    const rows = db.prepare("SELECT * FROM alerts WHERE is_active = 1 ORDER BY created_at DESC").all() as any[];
+    const conditions: string[] = ["is_active = 1"];
+    const params: any[] = [];
+    if (options?.from) {
+      conditions.push("created_at >= ?");
+      params.push(options.from);
+    }
+    if (options?.to) {
+      conditions.push("created_at <= ?");
+      params.push(options.to);
+    }
+    const where = `WHERE ${conditions.join(" AND ")}`;
+    const rows = db.prepare(`SELECT * FROM alerts ${where} ORDER BY created_at DESC`).all(...params) as any[];
     return rows.map((r) => ({
       ...r,
       is_active: Boolean(r.is_active),
@@ -649,12 +671,18 @@ export const dbRepo = {
     };
   },
 
-  /** Surowe znaczniki do wykresu rytmu publikacji (bez treści dokumentów). */
-  getPublicationRhythmRows(publishedFrom: string): { published_at: string; is_orlen_official: boolean; is_labor_signal: boolean }[] {
+  /** Surowe znaczniki do wykresu rytmu publikacji (bez treści dokumentów) z opcjonalnym to. */
+  getPublicationRhythmRows(publishedFrom: string, publishedTo?: string): { published_at: string; is_orlen_official: boolean; is_labor_signal: boolean }[] {
     const db = getSqliteDb();
+    const conditions = ["published_at >= ?"];
+    const params: any[] = [publishedFrom];
+    if (publishedTo) {
+      conditions.push("published_at <= ?");
+      params.push(publishedTo);
+    }
     const rows = db
-      .prepare("SELECT published_at, is_orlen_official, is_labor_signal FROM documents WHERE published_at >= ?")
-      .all(publishedFrom) as { published_at: string; is_orlen_official: number; is_labor_signal: number }[];
+      .prepare(`SELECT published_at, is_orlen_official, is_labor_signal FROM documents WHERE ${conditions.join(" AND ")}`)
+      .all(...params) as { published_at: string; is_orlen_official: number; is_labor_signal: number }[];
     return rows.map((r) => ({
       published_at: r.published_at,
       is_orlen_official: Boolean(r.is_orlen_official),
@@ -662,32 +690,77 @@ export const dbRepo = {
     }));
   },
 
-  /** Wydawcy z największą liczbą publikacji od podanej daty. */
-  getTopPublishers(publishedFrom: string, limit: number): { source_name: string; count: number; official: number }[] {
+  /** Wydawcy z największą liczbą publikacji w zadanym oknie czasowym. */
+  getTopPublishers(publishedFrom: string, limit: number, publishedTo?: string): { source_name: string; count: number; official: number }[] {
     const db = getSqliteDb();
+    const conditions = ["published_at >= ?"];
+    const params: any[] = [publishedFrom];
+    if (publishedTo) {
+      conditions.push("published_at <= ?");
+      params.push(publishedTo);
+    }
+    params.push(limit);
     return db
       .prepare(`
         SELECT source_name, COUNT(*) AS count, SUM(is_orlen_official) AS official
         FROM documents
-        WHERE published_at >= ?
+        WHERE ${conditions.join(" AND ")}
         GROUP BY source_name
         ORDER BY count DESC, source_name ASC
         LIMIT ?
       `)
-      .all(publishedFrom, limit) as { source_name: string; count: number; official: number }[];
+      .all(...params) as { source_name: string; count: number; official: number }[];
   },
 
-  // Statystyki systemu dla kokpitu
-  getDashboardStats() {
+  // Statystyki systemu dla kokpitu (z opcjonalnym zakresem czasowym)
+  getDashboardStats(options?: { from?: string; to?: string }) {
     const db = getSqliteDb();
-    const totalDocs = (db.prepare("SELECT COUNT(*) as c FROM documents").get() as any).c;
-    const officialDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 1").get() as any).c;
-    const laborDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_labor_signal = 1").get() as any).c;
-    const laborSignalDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 0 AND is_labor_signal = 1").get() as { c: number }).c;
-    const externalDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 0 AND is_labor_signal = 0").get() as { c: number }).c;
-    const localDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_local_signal = 1").get() as any).c;
-    const totalEvents = (db.prepare("SELECT COUNT(*) as c FROM events").get() as any).c;
-    const activeAlerts = (db.prepare("SELECT COUNT(*) as c FROM alerts WHERE is_active = 1").get() as any).c;
+    const docConditions: string[] = [];
+    const docParams: any[] = [];
+    if (options?.from) {
+      docConditions.push("published_at >= ?");
+      docParams.push(options.from);
+    }
+    if (options?.to) {
+      docConditions.push("published_at <= ?");
+      docParams.push(options.to);
+    }
+    const docWhere = docConditions.length > 0 ? `WHERE ${docConditions.join(" AND ")}` : "";
+    const andDoc = docConditions.length > 0 ? `AND ${docConditions.join(" AND ")}` : "";
+
+    const totalDocs = (db.prepare(`SELECT COUNT(*) as c FROM documents ${docWhere}`).get(...docParams) as any).c;
+    const officialDocs = (db.prepare(`SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 1 ${andDoc}`).get(...docParams) as any).c;
+    const laborDocs = (db.prepare(`SELECT COUNT(*) as c FROM documents WHERE is_labor_signal = 1 ${andDoc}`).get(...docParams) as any).c;
+    const laborSignalDocs = (db.prepare(`SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 0 AND is_labor_signal = 1 ${andDoc}`).get(...docParams) as { c: number }).c;
+    const externalDocs = (db.prepare(`SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 0 AND is_labor_signal = 0 ${andDoc}`).get(...docParams) as { c: number }).c;
+    const localDocs = (db.prepare(`SELECT COUNT(*) as c FROM documents WHERE is_local_signal = 1 ${andDoc}`).get(...docParams) as any).c;
+
+    const eventConditions: string[] = [];
+    const eventParams: any[] = [];
+    if (options?.from) {
+      eventConditions.push("last_signal_at >= ?");
+      eventParams.push(options.from);
+    }
+    if (options?.to) {
+      eventConditions.push("last_signal_at <= ?");
+      eventParams.push(options.to);
+    }
+    const eventWhere = eventConditions.length > 0 ? `WHERE ${eventConditions.join(" AND ")}` : "";
+    const totalEvents = (db.prepare(`SELECT COUNT(*) as c FROM events ${eventWhere}`).get(...eventParams) as any).c;
+
+    const alertConditions: string[] = ["is_active = 1"];
+    const alertParams: any[] = [];
+    if (options?.from) {
+      alertConditions.push("created_at >= ?");
+      alertParams.push(options.from);
+    }
+    if (options?.to) {
+      alertConditions.push("created_at <= ?");
+      alertParams.push(options.to);
+    }
+    const alertWhere = `WHERE ${alertConditions.join(" AND ")}`;
+    const activeAlerts = (db.prepare(`SELECT COUNT(*) as c FROM alerts ${alertWhere}`).get(...alertParams) as any).c;
+
     const totalSources = (db.prepare("SELECT COUNT(*) as c FROM sources").get() as any).c;
     const activeSources = (db.prepare("SELECT COUNT(*) as c FROM sources WHERE is_active = 1").get() as any).c;
 

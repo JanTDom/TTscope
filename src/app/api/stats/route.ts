@@ -1,13 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { dbRepo } from "@/lib/db";
+import { resolveTimeRange } from "@/lib/analytics/time-ranges";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const stats = dbRepo.getDashboardStats();
-    return NextResponse.json({ ok: true, stats });
+    const { searchParams } = new URL(req.url);
+    const preset = searchParams.get("time_range") || undefined;
+    const from = searchParams.get("from") || undefined;
+    const to = searchParams.get("to") || undefined;
+
+    const timeRange = resolveTimeRange({ preset, from, to });
+    const stats = dbRepo.getDashboardStats({
+      from: timeRange.fromIso,
+      to: timeRange.toIso,
+    });
+
+    return NextResponse.json({
+      ok: true,
+      timeRange,
+      stats,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Błąd pobierania statystyk";
     return NextResponse.json({ ok: false, error: message }, { status: 500 });

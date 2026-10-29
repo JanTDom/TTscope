@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dbRepo } from "@/lib/db";
 import { isCommunicationChannel } from "@/lib/analytics/publication-rhythm";
+import { resolveTimeRange } from "@/lib/analytics/time-ranges";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -31,10 +32,20 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Nieznany kanał komunikacji" }, { status: 400 });
     }
     const channel = channelParam && isCommunicationChannel(channelParam) ? channelParam : undefined;
-    const publishedFrom = parseIsoParam(searchParams.get("from"));
-    const publishedTo = parseIsoParam(searchParams.get("to"));
-    if (publishedFrom === null || publishedTo === null) {
+    const presetParam = searchParams.get("time_range") || undefined;
+    const fromParam = parseIsoParam(searchParams.get("from"));
+    const toParam = parseIsoParam(searchParams.get("to"));
+    if (fromParam === null || toParam === null) {
       return NextResponse.json({ ok: false, error: "Nieprawidłowy zakres dat" }, { status: 400 });
+    }
+
+    let publishedFrom = fromParam;
+    let publishedTo = toParam;
+
+    if (presetParam || (fromParam && toParam)) {
+      const resolved = resolveTimeRange({ preset: presetParam, from: fromParam, to: toParam });
+      publishedFrom = resolved.fromIso;
+      publishedTo = resolved.toIso;
     }
     const sourceName = searchParams.get("publisher")?.slice(0, MAX_PUBLISHER_LENGTH) || undefined;
     const limit = Number(searchParams.get("limit")) || 50;
