@@ -42,14 +42,17 @@ export async function GET(req: NextRequest) {
     let publishedFrom = fromParam;
     let publishedTo = toParam;
 
-    if (presetParam || (fromParam && toParam)) {
+    if (presetParam === "all") {
+      publishedFrom = undefined;
+      publishedTo = undefined;
+    } else if (presetParam || (fromParam && toParam)) {
       const resolved = resolveTimeRange({ preset: presetParam, from: fromParam, to: toParam });
       publishedFrom = resolved.fromIso;
       publishedTo = resolved.toIso;
     }
     const sourceName = searchParams.get("publisher")?.slice(0, MAX_PUBLISHER_LENGTH) || undefined;
-    const limit = Number(searchParams.get("limit")) || 50;
-    const offset = Number(searchParams.get("offset")) || 0;
+    const limit = Math.min(Math.max(Number(searchParams.get("limit")) || 50, 1), 500);
+    const offset = Math.max(Number(searchParams.get("offset")) || 0, 0);
 
     const result = await dbRepo.getDocuments({
       query,

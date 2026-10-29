@@ -14,6 +14,7 @@ describe("time-ranges", () => {
     expect(isTimeRangePreset("24h")).toBe(true);
     expect(isTimeRangePreset("7d")).toBe(true);
     expect(isTimeRangePreset("30d")).toBe(true);
+    expect(isTimeRangePreset("all")).toBe(true);
     expect(isTimeRangePreset("custom")).toBe(true);
     expect(isTimeRangePreset("invalid")).toBe(false);
   });
@@ -43,6 +44,10 @@ describe("time-ranges", () => {
     const res30 = resolveTimeRange({ preset: "30d" }, reference);
     expect(res30.preset).toBe("30d");
     expect(new Date(res30.fromIso).getTime()).toBe(new Date(reference).getTime() - 30 * 24 * 3600000);
+
+    const resAll = resolveTimeRange({ preset: "all" }, reference);
+    expect(resAll.preset).toBe("all");
+    expect(resAll.shortLabel).toBe("Wszystko");
   });
 
   it("rozwiązuje własny zakres 'od - do' (custom)", () => {

@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState, useMemo } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Radio,
@@ -16,6 +16,9 @@ import {
   Users,
   Newspaper,
   X,
+  Calendar,
+  Layers,
+  ArrowDownCircle,
 } from "lucide-react";
 import type { Document } from "@/lib/db/types";
 import { formatPublicationTime } from "@/lib/format/publication";
@@ -24,15 +27,66 @@ import {
   isCommunicationChannel,
 } from "@/lib/analytics/publication-rhythm";
 import { CHANNEL_THEME } from "@/components/charts/channel-theme";
+import { GlobalTimeRangeSelector } from "@/components/navigation/GlobalTimeRangeSelector";
+import {
+  TIME_RANGE_PRESETS,
+  type TimeRangePreset,
+} from "@/lib/analytics/time-ranges";
+
+const BATCH_SIZE = 100;
+
+interface DayGroup {
+  dateKey: string;
+  label: string;
+  documents: Document[];
+}
+
+function groupDocumentsByDay(docs: Document[]): DayGroup[] {
+  const groups: { [dateKey: string]: { label: string; documents: Document[] } } = {};
+  const dayFormatter = new Intl.DateTimeFormat("pl-PL", {
+    timeZone: "Europe/Warsaw",
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  for (const doc of docs) {
+    let dateKey = "unknown";
+    let label = "Brak zarejestrowanej daty publikacji";
+    if (doc.published_at) {
+      const d = new Date(doc.published_at);
+      if (!Number.isNaN(d.getTime())) {
+        dateKey = doc.published_at.slice(0, 10);
+        const formatted = dayFormatter.format(d);
+        label = formatted.charAt(0).toUpperCase() + formatted.slice(1);
+      }
+    }
+
+    if (!groups[dateKey]) {
+      groups[dateKey] = { label, documents: [] };
+    }
+    groups[dateKey].documents.push(doc);
+  }
+
+  return Object.entries(groups).map(([dateKey, val]) => ({
+    dateKey,
+    label: val.label,
+    documents: val.documents,
+  }));
+}
 
 function StreamContent() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [documents, setDocuments] = useState<Document[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
+  // Filtry
   const [query, setQuery] = useState(searchParams.get("query") ?? "");
   const [sourceType, setSourceType] = useState(searchParams.get("source_type") ?? "");
   const [location, setLocation] = useState(searchParams.get("location") ?? "");
@@ -50,6 +104,9 @@ function StreamContent() {
   const [publisher, setPublisher] = useState(searchParams.get("publisher") ?? "");
   const [fromDate, setFromDate] = useState(searchParams.get("from") ?? "");
   const [toDate, setToDate] = useState(searchParams.get("to") ?? "");
+  const [timeRange, setTimeRange] = useState<TimeRangePreset>(
+    (searchParams.get("time_range") as TimeRangePreset) || "24h"
+  );
 
   const [analyzingDocId, setAnalyzingDocId] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<any | null>(null);
@@ -71,10 +128,16 @@ function StreamContent() {
     setLocation(searchParams.get("location") ?? "");
     setSourceType(searchParams.get("source_type") ?? "");
     setQuery(searchParams.get("query") ?? "");
+    setTimeRange((searchParams.get("time_range") as TimeRangePreset) || "24h");
   }, [searchParams]);
 
-  const fetchDocs = async () => {
-    setLoading(true);
+  const fetchDocs = async (append = false, fetchAll = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+
     try {
       const params = new URLSearchParams();
       if (query) params.set("query", query);
@@ -84,27 +147,39 @@ function StreamContent() {
       if (publisher) params.set("publisher", publisher);
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
+      if (timeRange && !fromDate) params.set("time_range", timeRange);
+
+      const offset = append ? documents.length : 0;
+      const limit = fetchAll ? 500 : BATCH_SIZE;
+
+      params.set("limit", String(limit));
+      params.set("offset", String(offset));
 
       const res = await fetch(`/api/documents?${params.toString()}`);
       const data = await res.json();
       if (data.ok) {
-        setDocuments(data.documents);
+        if (append) {
+          setDocuments((prev) => [...prev, ...data.documents]);
+        } else {
+          setDocuments(data.documents);
+        }
         setTotal(data.total);
       }
     } catch (err) {
       console.error("Błąd pobierania strumienia:", err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   useEffect(() => {
-    fetchDocs();
-  }, [sourceType, location, channel, publisher, fromDate, toDate]);
+    fetchDocs(false);
+  }, [sourceType, location, channel, publisher, fromDate, toDate, timeRange]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchDocs();
+    fetchDocs(false);
   };
 
   const clearAllFilters = () => {
@@ -137,23 +212,35 @@ function StreamContent() {
   };
 
   const hasActiveFilters = Boolean(
-    channel || publisher || fromDate || toDate || location || sourceType || query
+    channel || publisher || fromDate || toDate || location || sourceType || query || (timeRange && timeRange !== "24h")
   );
+
+  const matchedPreset = TIME_RANGE_PRESETS.find((p) => p.preset === timeRange);
+  const timeRangeLabel = matchedPreset ? matchedPreset.label : "Zakres niestandardowy";
+
+  // Grupowanie dokumentów po dniach (kalendarz warszawski)
+  const dayGroups = useMemo(() => groupDocumentsByDay(documents), [documents]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-surface-border pb-5">
+      {/* Pasek nagłówkowy z nadrzędnym selektorem czasu */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-surface-border pb-5">
         <div>
           <h2 className="text-xl font-semibold tracking-tight text-white flex items-center gap-2">
             <Radio className="w-5 h-5 text-cyan-400" />
-            Strumień publikacji i sygnałów wywiadowczych
+            <span>Strumień publikacji i sygnałów wywiadowczych</span>
           </h2>
           <p className="text-xs text-slate-300 mt-1">
-            Pełny, chronologiczny zapis materiałów wg godziny ukazania się w źródle.
+            Pełny, chronologiczny zapis materiałów wg daty i godziny ukazania się w źródle.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <GlobalTimeRangeSelector
+            currentPreset={timeRange}
+            currentFrom={fromDate}
+            currentTo={toDate}
+          />
           {hasActiveFilters && (
             <button
               onClick={clearAllFilters}
@@ -163,11 +250,43 @@ function StreamContent() {
             </button>
           )}
           <div className="text-xs text-slate-300 font-mono bg-[#07162c] px-3.5 py-2 rounded-xl border border-cyan-500/30">
-            Wyniki: <strong className="text-cyan-300">{total}</strong>
+            Wyniki w oknie: <strong className="text-cyan-300">{total}</strong>
           </div>
         </div>
       </div>
 
+      {/* Pasek statusu wybranego horyzontu i kontrola wczytywania partii */}
+      <div className="flex items-center justify-between gap-3 p-3.5 bg-gradient-to-r from-[#06152b] via-[#091f3c] to-[#061326] rounded-xl border border-cyan-500/30 text-xs flex-wrap">
+        <div className="flex items-center gap-2 text-slate-200">
+          <Clock className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+          <span>
+            Horyzont analizy: <strong className="text-cyan-300 font-mono">{timeRangeLabel}</strong>
+            {" "}(wczytano <span className="text-white font-bold font-mono">{documents.length}</span> z <span className="text-cyan-300 font-bold font-mono">{total}</span> zarejestrowanych materiałów)
+          </span>
+        </div>
+
+        {documents.length < total && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => fetchDocs(true, false)}
+              disabled={loadingMore}
+              className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-semibold transition-all disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <ArrowDownCircle className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{loadingMore ? "Wczytywanie..." : `Wczytaj kolejne 100 (+${Math.min(BATCH_SIZE, total - documents.length)})`}</span>
+            </button>
+            <button
+              onClick={() => fetchDocs(false, true)}
+              disabled={loadingMore}
+              className="px-3.5 py-1.5 rounded-lg bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-bold transition-all disabled:opacity-50"
+            >
+              Wczytaj wszystkie ({total})
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Przełączniki kanałów komunikacji */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <button
           onClick={() => setChannel("")}
@@ -224,9 +343,10 @@ function StreamContent() {
         </button>
       </div>
 
+      {/* Aktywne zawężenia */}
       {(publisher || fromDate || toDate || location) && (
         <div className="flex items-center gap-2 flex-wrap bg-[#061326] p-3 rounded-xl border border-cyan-500/30 text-xs">
-          <span className="text-slate-400">Aktywne zawężenie:</span>
+          <span className="text-slate-400">Aktywne filtry:</span>
           {publisher && (
             <button
               onClick={() => setPublisher("")}
@@ -263,6 +383,7 @@ function StreamContent() {
         </div>
       )}
 
+      {/* Wyszukiwarka i filtry dodatkowe */}
       <div className="bg-surface p-4 rounded-xl border border-surface-border space-y-4">
         <form onSubmit={handleSearchSubmit} className="flex gap-2">
           <div className="relative flex-1">
@@ -299,7 +420,7 @@ function StreamContent() {
             <option value="media_regional">Media regionalne i lokalne</option>
             <option value="media_industry">Media branżowe</option>
             <option value="media_general">Media ogólnopolskie</option>
-            <option value="social_media">Media społecznościowe i związki</option>
+            <option value="social_media">Media społecznościowe i kanały syndykacji</option>
           </select>
 
           <select
@@ -318,13 +439,14 @@ function StreamContent() {
         </div>
       </div>
 
+      {/* Modal / Panel analizy Gemini */}
       {analysisResult && (
         <div className="bg-surface rounded-xl border border-cyan-500/40 p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-surface-border pb-3">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-400" />
               <h4 className="text-sm font-semibold text-white">
-                Wynik analizy Gemini API (Zwalidowany ze źródłem)
+                Wynik analizy dowodowej Gemini
               </h4>
             </div>
             <button
@@ -385,8 +507,9 @@ function StreamContent() {
         </div>
       )}
 
+      {/* Główna lista materiałów z podziałem na dni */}
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-28 bg-surface animate-pulse rounded-xl border border-surface-border" />
           ))}
@@ -395,116 +518,162 @@ function StreamContent() {
         <div className="p-12 text-center bg-surface rounded-xl border border-surface-border space-y-2">
           <div className="text-sm font-medium text-slate-200">Brak dokumentów spełniających kryteria</div>
           <p className="text-xs text-slate-400">
-            Zmień parametry wyszukiwania lub wyczyść filtry, aby zobaczyć wszystkie materiały.
+            Zmień horyzont czasowy lub wyczyść filtry, aby wyświetlić więcej zarejestrowanych materiałów.
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {documents.map((doc) => (
-            <div
-              key={doc.id}
-              className="bg-surface p-5 rounded-xl border border-surface-border hover:border-cyan-500/40 transition-colors space-y-3"
-            >
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {doc.is_orlen_official ? (
-                    <button
-                      onClick={() => setChannel("official")}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/80"
-                    >
-                      <Building2 className="w-3 h-3" /> Oficjalne ORLEN
-                    </button>
-                  ) : doc.is_labor_signal ? (
-                    <button
-                      onClick={() => setChannel("labor")}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/80"
-                    >
-                      <Users className="w-3 h-3" /> Sygnał związkowy / załogi
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setChannel("external")}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-indigo-950/70 text-indigo-300 border border-indigo-500/35 hover:bg-indigo-900/70"
-                    >
-                      <Newspaper className="w-3 h-3" /> Media zewnętrzne
-                    </button>
-                  )}
-
-                  <button
-                    onClick={() => setPublisher(doc.source_name)}
-                    className="text-xs font-semibold text-cyan-300 hover:text-white transition-colors"
-                    title="Filtruj po tym wydawcy"
-                  >
-                    {doc.source_name}
-                  </button>
-
-                  {doc.facility_location && (
-                    <button
-                      onClick={() => setLocation(doc.facility_location!)}
-                      className="inline-flex items-center gap-1 text-[11px] text-slate-300 hover:text-cyan-300 bg-surface-muted px-2 py-0.5 rounded border border-white/10"
-                    >
-                      <MapPin className="w-3 h-3 text-cyan-400" />
-                      {doc.facility_location}
-                    </button>
-                  )}
+        <div className="space-y-8">
+          {dayGroups.map((group) => (
+            <div key={group.dateKey} className="space-y-3">
+              {/* Przyklejany nagłówek dnia z liczbą publikacji */}
+              <div className="sticky top-2 z-10 flex items-center justify-between gap-3 bg-[#071932]/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-cyan-500/35 shadow-lg">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-cyan-400" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                    {group.label}
+                  </h3>
                 </div>
-
-                <div className="flex items-center gap-3 text-[11px] text-slate-300 font-mono">
-                  <span className="flex items-center gap-1 text-cyan-200">
-                    <Clock className="w-3 h-3 text-cyan-400" />
-                    Godzina ukazania się: {formatPublicationTime(doc.published_at)}
-                  </span>
-                </div>
+                <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300">
+                  {group.documents.length} {group.documents.length === 1 ? "publikacja" : group.documents.length < 5 ? "publikacje" : "publikacji"}
+                </span>
               </div>
 
-              <h3 className="text-base font-semibold text-white leading-snug">
-                <a
-                  href={doc.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-cyan-300 transition-colors inline-flex items-center gap-1.5"
-                >
-                  <span>{doc.title}</span>
-                  <ExternalLink className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
-                </a>
-              </h3>
-
-              <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
-                {doc.excerpt || doc.content}
-              </p>
-
-              <div className="pt-2 border-t border-surface-border flex items-center justify-between gap-4 flex-wrap">
-                <div className="text-[11px] text-slate-400 font-mono truncate max-w-md">
-                  Źródło URL:{" "}
-                  <a
-                    href={doc.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-slate-300 hover:underline"
+              {/* Karty materiałów w danym dniu */}
+              <div className="space-y-3">
+                {group.documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="bg-surface p-5 rounded-xl border border-surface-border hover:border-cyan-500/40 transition-colors space-y-3 shadow-sm"
                   >
-                    {doc.url}
-                  </a>
-                </div>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {doc.is_orlen_official ? (
+                          <button
+                            onClick={() => setChannel("official")}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-900/80"
+                          >
+                            <Building2 className="w-3 h-3" /> Oficjalne ORLEN
+                          </button>
+                        ) : doc.is_labor_signal ? (
+                          <button
+                            onClick={() => setChannel("labor")}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/80"
+                          >
+                            <Users className="w-3 h-3" /> Sygnał związkowy / załogi
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setChannel("external")}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-indigo-950/70 text-indigo-300 border border-indigo-500/35 hover:bg-indigo-900/70"
+                          >
+                            <Newspaper className="w-3 h-3" /> Media zewnętrzne
+                          </button>
+                        )}
 
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/orlen-diff"
-                    className="px-2.5 py-1.5 rounded-lg bg-surface-muted hover:bg-cyan-950/60 border border-surface-border text-[11px] text-slate-300 hover:text-cyan-200 transition-colors"
-                  >
-                    Porównaj z ORLEN
-                  </Link>
-                  <button
-                    onClick={() => handleAnalyzeGemini(doc.id)}
-                    disabled={analyzingDocId === doc.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/70 hover:bg-cyan-900 border border-cyan-500/40 text-xs text-cyan-200 transition-colors disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    {analyzingDocId === doc.id ? "Analizowanie (Gemini)..." : "Analizuj dowodowo (Gemini)"}
-                  </button>
-                </div>
+                        <button
+                          onClick={() => setPublisher(doc.source_name)}
+                          className="text-xs font-semibold text-cyan-300 hover:text-white transition-colors"
+                          title="Filtruj po tym wydawcy"
+                        >
+                          {doc.source_name}
+                        </button>
+
+                        {doc.facility_location && (
+                          <button
+                            onClick={() => setLocation(doc.facility_location!)}
+                            className="inline-flex items-center gap-1 text-[11px] text-slate-300 hover:text-cyan-300 bg-surface-muted px-2 py-0.5 rounded border border-white/10"
+                          >
+                            <MapPin className="w-3 h-3 text-cyan-400" />
+                            {doc.facility_location}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 text-[11px] text-slate-300 font-mono">
+                        <span className="flex items-center gap-1 text-cyan-200">
+                          <Clock className="w-3 h-3 text-cyan-400" />
+                          Godzina: {formatPublicationTime(doc.published_at)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <h4 className="text-base font-semibold text-white leading-snug">
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-cyan-300 transition-colors inline-flex items-center gap-1.5"
+                      >
+                        <span>{doc.title}</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0" />
+                      </a>
+                    </h4>
+
+                    <p className="text-xs text-slate-300 line-clamp-3 leading-relaxed">
+                      {doc.excerpt || doc.content}
+                    </p>
+
+                    <div className="pt-2 border-t border-surface-border flex items-center justify-between gap-4 flex-wrap">
+                      <div className="text-[11px] text-slate-400 font-mono truncate max-w-md">
+                        Źródło URL:{" "}
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-slate-300 hover:underline"
+                        >
+                          {doc.url}
+                        </a>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href="/orlen-diff"
+                          className="px-2.5 py-1.5 rounded-lg bg-surface-muted hover:bg-cyan-950/60 border border-surface-border text-[11px] text-slate-300 hover:text-cyan-200 transition-colors"
+                        >
+                          Porównaj z ORLEN
+                        </Link>
+                        <button
+                          onClick={() => handleAnalyzeGemini(doc.id)}
+                          disabled={analyzingDocId === doc.id}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/70 hover:bg-cyan-900 border border-cyan-500/40 text-xs text-cyan-200 transition-colors disabled:opacity-50"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                          {analyzingDocId === doc.id ? "Analizowanie (Gemini)..." : "Analizuj dowodowo (Gemini)"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
+
+          {/* Dolny pasek ładowania kolejnych materiałów */}
+          {documents.length < total && (
+            <div className="p-6 rounded-2xl bg-[#07162c] border border-cyan-500/35 text-center space-y-3">
+              <p className="text-xs text-slate-300">
+                Wyświetlono <strong className="text-white font-mono">{documents.length}</strong> z <strong className="text-cyan-300 font-mono">{total}</strong> publikacji w wybranym horyzoncie.
+              </p>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                <button
+                  onClick={() => fetchDocs(true, false)}
+                  disabled={loadingMore}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-xs font-semibold text-cyan-200 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <ArrowDownCircle className="w-4 h-4 text-cyan-400" />
+                  <span>{loadingMore ? "Wczytywanie..." : `Wczytaj kolejne 100 materiałów (+${Math.min(BATCH_SIZE, total - documents.length)})`}</span>
+                </button>
+                <button
+                  onClick={() => fetchDocs(false, true)}
+                  disabled={loadingMore}
+                  className="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 text-xs font-bold transition-all shadow-[0_0_20px_rgba(0,229,255,0.3)] disabled:opacity-50"
+                >
+                  Wczytaj wszystkie ({total})
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -515,7 +684,7 @@ export default function StreamPage() {
   return (
     <Suspense
       fallback={
-        <div className="space-y-3">
+        <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-28 bg-surface animate-pulse rounded-xl border border-surface-border" />
           ))}

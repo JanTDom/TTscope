@@ -34,12 +34,14 @@ export interface StreamFilter {
   from?: string;
   to?: string;
   publisher?: string;
+  timeRange?: string;
 }
 
 /** Adres strumienia publikacji z ustawionym filtrem. */
 export function streamHref(filter: StreamFilter): string {
   const params = new URLSearchParams();
   if (filter.channel) params.set("channel", filter.channel);
+  if (filter.timeRange) params.set("time_range", filter.timeRange);
   if (filter.from) params.set("from", filter.from);
   if (filter.to) params.set("to", filter.to);
   if (filter.publisher) params.set("publisher", filter.publisher);

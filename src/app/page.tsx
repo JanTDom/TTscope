@@ -148,7 +148,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       {/* 4 klikalne karty analityczne — podporządkowane wybranemu zakresowi czasu */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         <Link
-          href={streamHref({ channel: "official", from: timeRange.fromIso, to: timeRange.toIso })}
+          href={streamHref({ channel: "official", timeRange: timeRange.preset, from: timeRange.fromIso, to: timeRange.toIso })}
           className="group bg-gradient-to-br from-[#081a34] via-[#061326] to-[#040c18] p-5 rounded-2xl border border-cyan-400/35 hover:border-cyan-300 shadow-[0_8px_30px_rgba(0,0,0,0.45)] hover:shadow-[0_0_28px_rgba(0,229,255,0.25)] flex flex-col justify-between relative overflow-hidden transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-cyan-300">
@@ -177,7 +177,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </Link>
 
         <Link
-          href={streamHref({ channel: "labor", from: timeRange.fromIso, to: timeRange.toIso })}
+          href={streamHref({ channel: "labor", timeRange: timeRange.preset, from: timeRange.fromIso, to: timeRange.toIso })}
           className="group bg-gradient-to-br from-[#1c1508] via-[#12100c] to-[#060c18] p-5 rounded-2xl border border-amber-400/35 hover:border-amber-300 shadow-[0_8px_30px_rgba(0,0,0,0.45)] hover:shadow-[0_0_28px_rgba(251,191,36,0.22)] flex flex-col justify-between relative overflow-hidden transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-amber-300">
@@ -206,7 +206,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         </Link>
 
         <Link
-          href={streamHref({ channel: "external", from: timeRange.fromIso, to: timeRange.toIso })}
+          href={streamHref({ channel: "external", timeRange: timeRange.preset, from: timeRange.fromIso, to: timeRange.toIso })}
           className="group bg-gradient-to-br from-[#0a1632] via-[#071126] to-[#040b18] p-5 rounded-2xl border border-indigo-400/35 hover:border-indigo-300 shadow-[0_8px_30px_rgba(0,0,0,0.45)] hover:shadow-[0_0_28px_rgba(129,140,248,0.25)] flex flex-col justify-between relative overflow-hidden transition-all hover:-translate-y-0.5"
         >
           <div className="flex items-center justify-between text-indigo-300">

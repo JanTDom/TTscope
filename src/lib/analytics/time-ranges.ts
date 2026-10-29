@@ -4,7 +4,7 @@
  * Wszystkie kalkulacje oparte o czas polski (Europe/Warsaw) i autentyczną datę ostatniej publikacji w bazie.
  */
 
-export type TimeRangePreset = "1h" | "8h" | "24h" | "7d" | "30d" | "custom";
+export type TimeRangePreset = "1h" | "8h" | "24h" | "7d" | "30d" | "all" | "custom";
 
 export interface TimeRangeFilter {
   preset: TimeRangePreset;
@@ -33,6 +33,7 @@ export const TIME_RANGE_PRESETS: ReadonlyArray<{
   { preset: "24h", label: "Ostatnie 24 godziny (24h)", shortLabel: "24h", hours: 24 },
   { preset: "7d", label: "Ostatnie 7 dni", shortLabel: "7 dni", days: 7 },
   { preset: "30d", label: "Ostatni miesiąc (30 dni)", shortLabel: "Miesiąc", days: 30 },
+  { preset: "all", label: "Cała historia (Wszystko)", shortLabel: "Wszystko" },
   { preset: "custom", label: "Własny zakres (od - do)", shortLabel: "Od - do" },
 ];
 
@@ -68,6 +69,17 @@ export function resolveTimeRange(
       fromIso: validFrom,
       toIso: validTo,
       isCustom: true,
+    };
+  }
+
+  if (presetParam === "all") {
+    return {
+      preset: "all",
+      label: "Cała historia (Wszystko)",
+      shortLabel: "Wszystko",
+      fromIso: "2010-01-01T00:00:00.000Z",
+      toIso: new Date(refDate.getTime() + 5 * 60000).toISOString(),
+      isCustom: false,
     };
   }
 

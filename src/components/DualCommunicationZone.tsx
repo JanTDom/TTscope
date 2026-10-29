@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   Building2,
   Users,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   Scale,
   ArrowRight,
+  ArrowUpRight,
   Radio,
 } from "lucide-react";
 import { formatPublicationTime } from "@/lib/format/publication";
@@ -41,8 +43,8 @@ interface DualZoneProps {
 
 export function DualCommunicationZone({ officialDocs, laborDocs, mediaDocs, expanded = false }: DualZoneProps) {
   const [activeTab, setActiveTab] = useState<"split" | "internal" | "external">("split");
-  const internalLimit = activeTab === "internal" || expanded ? 10 : 4;
-  const externalLimit = activeTab === "external" || expanded ? 16 : 8;
+  const [internalLimit, setInternalLimit] = useState(expanded ? 20 : 6);
+  const [externalLimit, setExternalLimit] = useState(expanded ? 24 : 8);
 
   return (
     <div className="bg-surface/95 rounded-2xl border border-cyan-500/30 shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden">
@@ -168,6 +170,24 @@ export function DualCommunicationZone({ officialDocs, laborDocs, mediaDocs, expa
                   </div>
                 ))}
               </div>
+
+              {officialDocs.length > internalLimit && (
+                <div className="pt-2 flex items-center justify-between gap-3 flex-wrap">
+                  <button
+                    onClick={() => setInternalLimit((prev) => prev + 12)}
+                    className="px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/30 text-xs text-cyan-200 font-semibold transition-all"
+                  >
+                    Pokaż kolejne komunikaty ({officialDocs.length - internalLimit} pozostało)
+                  </button>
+                  <Link
+                    href="/stream?channel=official"
+                    className="text-xs text-cyan-300 hover:text-white flex items-center gap-1 font-semibold"
+                  >
+                    <span>Otwórz w strumieniu ({officialDocs.length})</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              )}
             </div>
 
             {/* Podsekcja B: Głos załogi i związki zawodowe */}
@@ -285,6 +305,24 @@ export function DualCommunicationZone({ officialDocs, laborDocs, mediaDocs, expa
                 </div>
               ))}
             </div>
+
+            {mediaDocs.length > externalLimit && (
+              <div className="pt-2 flex items-center justify-between gap-3 flex-wrap border-t border-indigo-500/20">
+                <button
+                  onClick={() => setExternalLimit((prev) => prev + 24)}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 border border-indigo-400/30 text-xs text-indigo-200 font-semibold transition-all"
+                >
+                  Pokaż kolejne 24 publikacje prasowe ({mediaDocs.length - externalLimit} pozostało)
+                </button>
+                <Link
+                  href="/stream?channel=external"
+                  className="text-xs text-cyan-300 hover:text-white flex items-center gap-1 font-semibold"
+                >
+                  <span>Otwórz pełny strumień ({mediaDocs.length})</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
       </div>
