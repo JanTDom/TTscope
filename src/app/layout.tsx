@@ -34,12 +34,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico" },
-      { url: "/icon.png", type: "image/png" },
+      { url: "/icon.png?v=20261029_3", type: "image/png", sizes: "512x512" },
+      { url: "/favicon-32x32.png?v=20261029_3", type: "image/png", sizes: "32x32" },
+      { url: "/favicon.ico?v=20261029_3", sizes: "any" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png" },
+      { url: "/apple-touch-icon.png?v=20261029_3", sizes: "180x180", type: "image/png" },
     ],
+    shortcut: "/favicon.ico?v=20261029_3",
   },
 };
 
@@ -50,6 +52,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pl" className="dark">
+      <head>
+        <link rel="icon" href="/icon.png?v=20261029_3" type="image/png" sizes="512x512" />
+        <link rel="icon" href="/favicon-32x32.png?v=20261029_3" type="image/png" sizes="32x32" />
+        <link rel="icon" href="/favicon.ico?v=20261029_3" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20261029_3" />
+      </head>
       <body className="min-h-screen flex flex-col lg:flex-row bg-background text-foreground text-sm selection:bg-cyan-950 selection:text-cyan-200 radar-grid-bg antialiased">
         <SessionAuthGate>
           {/* Responsywna nawigacja: Sidebar na desktopie + Mobile Top Bar + Mobile Drawer + Bottom Bar */}
