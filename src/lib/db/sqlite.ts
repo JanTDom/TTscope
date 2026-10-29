@@ -120,32 +120,68 @@ export function getSqliteDb(): Database.Database {
 
   const dbDir = path.resolve(process.cwd(), "data");
   if (!fs.existsSync(dbDir)) {
-    fs.mkdirSync(dbDir, { recursive: true });
+    try {
+      fs.mkdirSync(dbDir, { recursive: true });
+    } catch {
+      // Ignorujemy błąd jeśli system plików jest tylko do odczytu
+    }
   }
 
-  const dbPath =
+  const defaultDbPath =
     process.env.NODE_ENV === "test" || process.env.VITEST
       ? ":memory:"
       : path.join(dbDir, "ttscope.db");
-  const db = new Database(dbPath);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
 
-  // Inicjalizacja schematu
-  db.exec(SQLITE_INIT_SCHEMA);
+  let actualDbPath = defaultDbPath;
 
-  // Seed początkowych zakładów
-  const insertFac = db.prepare(`
-    INSERT OR IGNORE INTO facilities (id, name, facility_type, city, voivodeship, lat, lng, operator_company, risk_level)
-    VALUES (@id, @name, @facility_type, @city, @voivodeship, @lat, @lng, @operator_company, @risk_level)
-  `);
-
-  const tx = db.transaction((facilities: Facility[]) => {
-    for (const f of facilities) {
-      insertFac.run(f);
+  // W środowisku Vercel Serverless system plików w katalogu projektu jest read-only.
+  // Kopiujemy bazę do /tmp/ttscope.db, gdzie proces ma pełne uprawnienia do zapisu i odczytu.
+  if (process.env.VERCEL && defaultDbPath !== ":memory:") {
+    const tmpDbPath = path.join("/tmp", "ttscope.db");
+    try {
+      if (!fs.existsSync(tmpDbPath) && fs.existsSync(defaultDbPath)) {
+        fs.copyFileSync(defaultDbPath, tmpDbPath);
+      }
+      if (fs.existsSync(tmpDbPath)) {
+        actualDbPath = tmpDbPath;
+      }
+    } catch (err) {
+      console.warn("Nie udało się skopiować bazy do /tmp, próba otwarcia w trybie readonly:", err);
     }
-  });
-  tx(INITIAL_FACILITIES);
+  }
+
+  let db: Database.Database;
+  try {
+    db = new Database(actualDbPath);
+    try {
+      db.pragma("journal_mode = WAL");
+      db.pragma("foreign_keys = ON");
+    } catch {
+      // Bezpieczny fallback dla trybu bez WAL
+    }
+  } catch {
+    // Fallback dla bazy strictly read-only
+    db = new Database(actualDbPath, { readonly: true });
+  }
+
+  // Bezpieczna inicjalizacja schematu i seed
+  try {
+    db.exec(SQLITE_INIT_SCHEMA);
+
+    const insertFac = db.prepare(`
+      INSERT OR IGNORE INTO facilities (id, name, facility_type, city, voivodeship, lat, lng, operator_company, risk_level)
+      VALUES (@id, @name, @facility_type, @city, @voivodeship, @lat, @lng, @operator_company, @risk_level)
+    `);
+
+    const tx = db.transaction((facilities: Facility[]) => {
+      for (const f of facilities) {
+        insertFac.run(f);
+      }
+    });
+    tx(INITIAL_FACILITIES);
+  } catch {
+    // Jeśli baza jest otwarta w trybie read-only, schemat i dane już istnieją w zmigrowanym pliku
+  }
 
   dbInstance = db;
   return db;
