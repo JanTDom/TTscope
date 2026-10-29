@@ -16,6 +16,19 @@ export interface IngestRunResult {
   error?: string | null;
 }
 
+export function extractLeadSnippet(text: string, maxLength: number = 320): string {
+  if (!text) return "";
+  const cleaned = text
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&[a-z]+;/g, " ")
+    .replace(/&#\d+;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleaned.length <= maxLength) return cleaned;
+  return cleaned.slice(0, maxLength).trim() + "...";
+}
+
 export function detectFacilityLocation(text: string): string | null {
   const lower = text.toLowerCase();
   if (lower.includes("płock") || lower.includes("plock") || lower.includes("olefiny")) return "Płock";
@@ -31,25 +44,58 @@ export function detectFacilityLocation(text: string): string | null {
 
 export function isLaborSignal(text: string): boolean {
   const lower = text.toLowerCase();
+
+  // Wykluczenia fałszywych trafień (związki sportowe, gospodarcze, chemiczne itp.)
+  const falsePositives = [
+    "związek gimnastyczn",
+    "związku gimnastyczn",
+    "związek sportow",
+    "związku sportow",
+    "związek piłk",
+    "związku piłk",
+    "związek narciarsk",
+    "związku narciarsk",
+    "związek pracodawc",
+    "związku pracodawc",
+    "związek miast",
+    "związku miast",
+    "związek gmin",
+    "związku gmin",
+    "związek chemiczn",
+    "związki chemiczn",
+    "związków chemiczn",
+    "związki siark",
+    "związki organiczn",
+    "związki nieorganicz",
+    "związki azot",
+  ];
+
+  if (falsePositives.some((fp) => lower.includes(fp))) {
+    return false;
+  }
+
   const laborKeywords = [
-    "związk",
-    "solidarność",
-    "solidarnosc",
+    "związek zawodowy",
+    "związki zawodowe",
+    "związków zawodowych",
+    "związkowc",
+    "działacz związkowy",
+    "działacze związkowi",
+    "nszz",
     "mzzprc",
     "spór zbiorowy",
     "spor zbiorowy",
     "podwyżki płac",
     "podwyżek płac",
-    "wynagrodzen",
-    "załog",
-    "pracownik",
-    "strajk",
-    "referendum strajkowe",
+    "żądania płacowe",
     "postulaty płacowe",
-    "bhp",
+    "referendum strajkowe",
+    "akcja protestacyjna pracowników",
+    "pikieta załogi",
+    "układ zbiorowy pracy",
+    "zuzp",
+    "zwolnienia grupowe",
     "inspekcja pracy",
-    "zwolnien",
-    "układ zbiorowy",
   ];
   return laborKeywords.some((kw) => lower.includes(kw));
 }
@@ -159,8 +205,9 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
 
       for (const item of items) {
         const combinedText = item.title + " " + item.content;
+        const leadSnippet = extractLeadSnippet(item.excerpt || item.content, 300);
         const contentHash = createHash("sha256")
-          .update(item.title.trim().toLowerCase() + "\n" + item.content.trim().slice(0, 1000))
+          .update(item.title.trim().toLowerCase() + "\n" + leadSnippet)
           .digest("hex");
 
         const doc: Document = {
@@ -173,8 +220,8 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
           author: item.author || "Biuro Prasowe ORLEN S.A.",
           published_at: item.pubDate || null,
           fetched_at: new Date().toISOString(),
-          content: item.content,
-          excerpt: item.excerpt || null,
+          content: leadSnippet,
+          excerpt: leadSnippet,
           language: "pl",
           source_type: "official_orlen",
           content_hash: contentHash,
@@ -320,6 +367,8 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
         "src_osge_smr",
       ].includes(source.id);
 
+      const leadSnippet = extractLeadSnippet(item.excerpt || item.content, 300);
+
       const doc: Document = {
         id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
         source_id: source.id,
@@ -330,8 +379,8 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
         author: item.author || item.publisherName || null,
         published_at: item.pubDate || null,
         fetched_at: new Date().toISOString(),
-        content: item.content,
-        excerpt: item.excerpt || null,
+        content: leadSnippet,
+        excerpt: leadSnippet,
         language: "pl",
         source_type: isDirectOfficialChannel ? "official_orlen" : source.category,
         content_hash: contentHash,

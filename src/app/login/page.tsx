@@ -40,7 +40,7 @@ function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4">
       <div>
         <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-2">
           Klucz dostępu analityka
@@ -54,6 +54,7 @@ function LoginForm() {
             placeholder="Wprowadź hasło autoryzacyjne..."
             required
             autoFocus
+            autoComplete="new-password"
             className="w-full bg-[#030914] border border-cyan-500/40 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 font-mono transition-all"
           />
         </div>

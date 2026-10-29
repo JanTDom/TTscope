@@ -11,12 +11,13 @@ export async function POST(req: NextRequest) {
 
     if (password === validPassword) {
       const response = NextResponse.json({ ok: true });
-      response.cookies.set("ttscope_session", "authenticated_ttscope_2026", {
+      // Ciasteczko czysto sesyjne (Session Cookie):
+      // Brak maxAge i Expires sprawia, że przeglądarka usuwa je przy zamknięciu sesji.
+      response.cookies.set("ttscope_session", `auth_${Date.now()}`, {
         path: "/",
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
-        maxAge: 60 * 60 * 24 * 30,
       });
       return response;
     }
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
       { ok: false, error: "Nieprawidłowe hasło dostępu do systemu TTscope" },
       { status: 401 }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { ok: false, error: "Błąd autoryzacji" },
       { status: 500 }

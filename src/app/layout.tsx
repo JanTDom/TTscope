@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { LogoutButton } from "@/components/navigation/LogoutButton";
 import {
   LayoutDashboard,
   Radio,
@@ -150,6 +151,7 @@ export default function RootLayout({
                 <RefreshCw className="w-4 h-4" />
                 Pobierz nowe publikacje
               </Link>
+              <LogoutButton />
             </div>
           </header>
 

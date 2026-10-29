@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
 
   // Sprawdzenie ciasteczka autoryzacji
   const sessionToken = request.cookies.get("ttscope_session")?.value;
-  if (sessionToken === "authenticated_ttscope_2026") {
+  if (sessionToken && (sessionToken.startsWith("auth_") || sessionToken === "authenticated_ttscope_2026")) {
     return NextResponse.next();
   }
 

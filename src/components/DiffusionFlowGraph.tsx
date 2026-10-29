@@ -33,9 +33,10 @@ export function DiffusionFlowGraph({ documents, maxNodes = 4 }: DiffusionFlowGra
   }
 
   const getStepStyle = (node: DiffusionNodeItem, index: number) => {
-    if (node.is_orlen_official) {
+    // 1. Oficjalne komunikaty Grupy Orlen / Energi / OSGE
+    if (node.is_orlen_official || node.source_type === "official_orlen") {
       return {
-        label: index === 0 ? "Komunikat pierwotny ORLEN" : "Oficjalne stanowisko ORLEN",
+        label: index === 0 ? "Oficjalny komunikat spółki (T+0)" : "Oficjalne stanowisko / oświadczenie",
         borderColor: "border-cyan-400/70",
         bgColor: "bg-gradient-to-br from-cyan-950/70 via-[#081d38] to-[#051124]",
         textColor: "text-cyan-300",
@@ -43,9 +44,10 @@ export function DiffusionFlowGraph({ documents, maxNodes = 4 }: DiffusionFlowGra
         icon: Building2,
       };
     }
-    if (node.is_labor_signal || node.diffusion_step === "labor_signal") {
+    // 2. Publikacje organizacji związkowych (NSZZ Solidarność, MZZPRC)
+    if (node.source_type === "internal_labor") {
       return {
-        label: "Sygnał wewnętrzny / związkowy",
+        label: "Komunikat związku zawodowego",
         borderColor: "border-amber-400/70",
         bgColor: "bg-gradient-to-br from-amber-950/60 via-[#1f1608] to-[#0a0d18]",
         textColor: "text-amber-300",
@@ -53,19 +55,21 @@ export function DiffusionFlowGraph({ documents, maxNodes = 4 }: DiffusionFlowGra
         icon: Users,
       };
     }
-    if (index === 0) {
+    // 3. Media regionalne (Trojmiasto.pl, Portal Płock itp.)
+    if (node.source_type === "media_regional" || node.diffusion_step === "local_pickup") {
       return {
-        label: "Pierwsza publikacja w mediach",
-        borderColor: "border-sky-400/60",
-        bgColor: "bg-gradient-to-br from-sky-950/60 via-[#091b34] to-[#051020]",
-        textColor: "text-sky-300",
-        dotColor: "bg-sky-400",
-        icon: Radio,
+        label: "Prasa i portal regionalny",
+        borderColor: "border-emerald-400/60",
+        bgColor: "bg-gradient-to-br from-emerald-950/50 via-[#071f1e] to-[#05101a]",
+        textColor: "text-emerald-300",
+        dotColor: "bg-emerald-400",
+        icon: Newspaper,
       };
     }
-    if (node.diffusion_step === "industry_media" || node.source_type === "media_industry") {
+    // 4. Portale branżowe (wnp.pl, Energetyka24, BiznesAlert itp.)
+    if (node.source_type === "media_industry" || node.diffusion_step === "industry_media") {
       return {
-        label: "Portal branżowy / energetyczny",
+        label: "Portal branżowy / sektorowy",
         borderColor: "border-indigo-400/50",
         bgColor: "bg-gradient-to-br from-indigo-950/50 via-[#0d152e] to-[#060c1a]",
         textColor: "text-indigo-300",
@@ -73,23 +77,25 @@ export function DiffusionFlowGraph({ documents, maxNodes = 4 }: DiffusionFlowGra
         icon: Briefcase,
       };
     }
-    if (node.diffusion_step === "local_pickup" || node.source_type === "media_regional") {
+    // 5. Media społecznościowe
+    if (node.source_type === "social_media" || node.diffusion_step === "social_amplification") {
       return {
-        label: "Prasa i portal regionalny",
-        borderColor: "border-emerald-400/50",
-        bgColor: "bg-gradient-to-br from-emerald-950/45 via-[#071f1e] to-[#05101a]",
-        textColor: "text-emerald-300",
-        dotColor: "bg-emerald-400",
-        icon: Newspaper,
+        label: "Media społecznościowe / fora",
+        borderColor: "border-fuchsia-400/50",
+        bgColor: "bg-gradient-to-br from-fuchsia-950/50 via-[#1c0d28] to-[#0a0512]",
+        textColor: "text-fuchsia-300",
+        dotColor: "bg-fuchsia-400",
+        icon: Radio,
       };
     }
+    // 6. Media ogólnopolskie (PAP, Onet, Rzeczpospolita itp.)
     return {
-      label: "Publikacja w mediach ogólnopolskich",
-      borderColor: "border-purple-400/45",
-      bgColor: "bg-gradient-to-br from-slate-900/95 via-[#0c1428] to-[#050b16]",
-      textColor: "text-purple-300",
-      dotColor: "bg-purple-400",
-      icon: Newspaper,
+      label: index === 0 ? "Pierwsza publikacja w mediach" : "Media ogólnopolskie",
+      borderColor: "border-sky-400/50",
+      bgColor: "bg-gradient-to-br from-sky-950/50 via-[#091b34] to-[#051020]",
+      textColor: "text-sky-300",
+      dotColor: "bg-sky-400",
+      icon: Radio,
     };
   };
 

@@ -269,11 +269,19 @@ export async function clusterDocumentsIntoEvents(): Promise<{ clustersCreated: n
 
       let step = "local_pickup";
       if (i === 0) {
-        step = doc.is_orlen_official ? "origin_official" : doc.is_labor_signal ? "labor_signal" : "origin";
+        step = doc.is_orlen_official
+          ? "origin_official"
+          : doc.source_type === "internal_labor"
+          ? "labor_signal"
+          : doc.source_type === "media_regional"
+          ? "local_pickup"
+          : "origin";
       } else if (doc.is_orlen_official) {
         step = "rebuttal";
-      } else if (doc.is_labor_signal) {
+      } else if (doc.source_type === "internal_labor") {
         step = "labor_signal";
+      } else if (doc.source_type === "media_regional") {
+        step = "local_pickup";
       } else if (doc.source_type === "media_industry") {
         step = "industry_media";
       } else if (doc.source_type === "media_general") {
