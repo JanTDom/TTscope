@@ -1,0 +1,43 @@
+{
+  "name": "ttscope",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Profesjonalny system OSINT, monitoringu mediów i wczesnego wykrywania kryzysów Grupy ORLEN",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "fetch:sources": "npx tsx scripts/fetch-sources.ts",
+    "analyze:gemini": "npx tsx scripts/analyze-gemini.ts",
+    "db:migrate": "npx tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.1.0",
+    "fast-xml-parser": "^4.5.3",
+    "lucide-react": "^1.16.0",
+    "next": "^15.1.7",
+    "pg": "^8.13.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^3.0.2",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.13.5",
+    "@types/pg": "^8.11.11",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.7"
+  }
+}
