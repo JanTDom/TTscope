@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
 import { dbRepo } from "../db";
 import type { Document, Source, SourceFetchRun } from "../db/types";
-import { parseRssOrAtom } from "./parser";
+import { parseRssOrAtom, type ParsedFeedItem } from "./parser";
+import { scrapeOrlenNewsroom } from "./orlen-scraper";
 
-const USER_AGENT = "TTscope-OSINT-Bot/1.0 (+https://ttscope.local; contact@ttscope.local)";
-const FETCH_TIMEOUT_MS = 10000;
+const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 (TTscope-OSINT-Bot/1.0; +https://ttscope.local)";
+const FETCH_TIMEOUT_MS = 12000;
 
 export interface IngestRunResult {
   source_id: string;
@@ -48,6 +49,7 @@ export function isLaborSignal(text: string): boolean {
     "bhp",
     "inspekcj",
     "zwolnien",
+    "układ zbiorowy",
   ];
   return laborKeywords.some((kw) => lower.includes(kw));
 }
@@ -71,6 +73,7 @@ export function isLocalSignal(text: string): boolean {
     "ewakuacj",
     "wioś",
     "straż pożarn",
+    "awari",
   ];
   return localKeywords.some((kw) => lower.includes(kw));
 }
@@ -96,6 +99,9 @@ export function isOrlenRelated(title: string, content: string, source: Source): 
     "stacja benzynowa",
     "stacje paliw",
     "biorafiner",
+    "baltic power",
+    "osge",
+    "mzzprc",
   ];
 
   return orlenKeywords.some((kw) => combined.includes(kw));
@@ -145,7 +151,93 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
     }
   }
 
-  // 2. Pobieranie z kanału RSS/Atom
+  // 2. Dedykowany Scraper dla oficjalnego Newsroomu ORLEN S.A.
+  if (source.id === "src_orlen_newsroom") {
+    try {
+      const items = await scrapeOrlenNewsroom();
+      let itemsNew = 0;
+
+      for (const item of items) {
+        const combinedText = item.title + " " + item.content;
+        const contentHash = createHash("sha256")
+          .update(item.title.trim().toLowerCase() + "\n" + item.content.trim().slice(0, 1000))
+          .digest("hex");
+
+        const doc: Document = {
+          id: `doc_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`,
+          source_id: source.id,
+          title: item.title,
+          url: item.link,
+          canonical_url: item.link,
+          source_name: source.name,
+          author: item.author || "Biuro Prasowe ORLEN S.A.",
+          published_at: item.pubDate || new Date().toISOString(),
+          fetched_at: new Date().toISOString(),
+          content: item.content,
+          excerpt: item.excerpt || null,
+          language: "pl",
+          source_type: "official_orlen",
+          content_hash: contentHash,
+          processing_status: "parsed",
+          licensing_status: "fair_use_public_osint",
+          error_info: null,
+          facility_location: detectFacilityLocation(combinedText) || "Płock",
+          is_orlen_official: true,
+          is_labor_signal: isLaborSignal(combinedText),
+          is_local_signal: isLocalSignal(combinedText),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { isNew } = dbRepo.insertDocument(doc);
+        if (isNew) itemsNew++;
+      }
+
+      const finishedAt = new Date().toISOString();
+      dbRepo.recordFetchRun({
+        id: runId,
+        source_id: source.id,
+        started_at: startedAt,
+        finished_at: finishedAt,
+        status: "success",
+        http_status: 200,
+        items_found: items.length,
+        items_new: itemsNew,
+        error_message: null,
+        created_at: startedAt,
+      });
+
+      dbRepo.upsertSourceConnector({
+        id: `conn_${source.id}`,
+        source_id: source.id,
+        connector_type: "html_cheerio",
+        is_configured: true,
+        last_success_at: finishedAt,
+        last_attempt_at: finishedAt,
+        last_error: null,
+      });
+
+      return {
+        source_id: source.id,
+        source_name: source.name,
+        status: "success",
+        items_found: items.length,
+        items_new: itemsNew,
+      };
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Błąd scrapowania newsroomu ORLEN";
+      return {
+        source_id: source.id,
+        source_name: source.name,
+        status: "failed",
+        items_found: 0,
+        items_new: 0,
+        error: errMsg,
+      };
+    }
+  }
+
+  // 3. Pobieranie z kanału RSS/Atom
   const targetUrl = source.feed_url || source.url;
 
   try {
