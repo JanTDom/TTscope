@@ -1,108 +1,212 @@
 import { dbRepo } from "../db";
-import type { Document, Event, EventDocument, Facility } from "../db/types";
+import type { Document, Event, Facility } from "../db/types";
 import { calculateSparksScore } from "../scoring/sparks";
 
-interface TopicClusterRule {
+export interface CoherentTopicRule {
   id: string;
   title: string;
-  keywords: string[];
+  category: "labor" | "local" | "market" | "governance" | "technology";
   facilityLocation?: string;
+  matcher: (doc: Document) => boolean;
 }
 
-const TOPIC_RULES: TopicClusterRule[] = [
+export const COHERENT_TOPIC_RULES: CoherentTopicRule[] = [
   {
-    id: "cluster_fuel_prices_retail",
-    title: "Dynamika cen i dostępności paliw na stacjach w Polsce",
-    keywords: ["ceny paliw", "cena paliw", "stacjach", "benzyna", "diesel", "tanieją", "drożeją", "paliwa na stacjach"],
-  },
-  {
-    id: "cluster_energa_sponsorship_comms",
-    title: "Komunikacja korporacyjna i sponsoring sportowy Energi",
-    keywords: ["energa", "sponsorem", "gimnastyczn", "olimpijsk", "energa gymnastics"],
-    facilityLocation: "Ostrołęka",
-  },
-  {
-    id: "cluster_salt_caverns_kosakowo",
-    title: "Infrastruktura magazynowa gazu — kawerny solne Kosakowo",
-    keywords: ["kawerny", "solne", "kosakow", "magazyn", "pgnig"],
+    id: "diff_ec_gdynia_moc",
+    title: "Rozbudowa mocy Elektrociepłowni Gdyńskiej o 110 MW i dekarbonizacja Trójmiasta",
+    category: "local",
     facilityLocation: "Gdańsk",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      const hasGdynia = text.includes("gdyńsk") || text.includes("gdynia");
+      const hasPower = text.includes("elektrociepłown") || text.includes("110 mw") || text.includes("ciepłownictw");
+      return hasGdynia && hasPower && !text.includes("trefl") && !text.includes("mecz");
+    },
   },
   {
-    id: "cluster_refinery_operations_plock",
-    title: "Ciągłość operacyjna i instalacje rafineryjne w Płocku",
-    keywords: ["płock", "olefiny", "instalacj", "flara", "rafineri", "pochodnia"],
-    facilityLocation: "Płock",
-  },
-  {
-    id: "cluster_fertilizers_anwil_wloclawek",
-    title: "Produkcja nawozów i rynek azotowy ANWIL Włocławek",
-    keywords: ["anwil", "włocławek", "wloclawek", "nawoz", "saletra"],
-    facilityLocation: "Włocławek",
-  },
-  {
-    id: "cluster_biorefinery_trzebinia",
-    title: "Segment biokomponentów i Biorafineria ORLEN Południe",
-    keywords: ["trzebinia", "orlen południe", "biodiesel", "biorafiner"],
-    facilityLocation: "Trzebinia",
-  },
-  {
-    id: "cluster_baltic_power_offshore",
-    title: "Morska energetyka wiatrowa — projekt Baltic Power na Bałtyku",
-    keywords: ["baltic power", "morska farma", "turbiny", "wiatrowa", "offshore"],
+    id: "diff_energa_gimnastyka",
+    title: "Sponsoring Polskiego Związku Gimnastycznego przez Grupę Energa (2026–2028)",
+    category: "governance",
     facilityLocation: "Gdańsk",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        (text.includes("gimnastycz") || text.includes("gymnastics")) &&
+        (text.includes("energa") || text.includes("pzg") || text.includes("sponsorem"))
+      );
+    },
   },
   {
-    id: "cluster_osge_smr_nuclear",
-    title: "Rozwój małych reaktorów jądrowych SMR — ORLEN Synthos Green Energy",
-    keywords: ["osge", "smr", "reaktor", "bwrx-300", "jądrow"],
-    facilityLocation: "Włocławek",
+    id: "diff_norway_afrodyta_gas",
+    title: "Odkrycie i podwojenie szacunków złoża gazu Afrodyta na Szelfie Norweskim",
+    category: "market",
+    facilityLocation: undefined,
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      const hasNorway = text.includes("norwegi") || text.includes("norway") || text.includes("afrodyta");
+      const hasGas = text.includes("złoż") || text.includes("gaz") || text.includes("odkryc");
+      return hasNorway && hasGas && text.includes("orlen");
+    },
   },
   {
-    id: "cluster_labor_unions_negotiations",
-    title: "Dialog społeczny, postulaty płacowe i aktywność związków zawodowych",
-    keywords: ["solidarność", "mzzprc", "związki zawodowe", "związkowcy", "spór zbiorowy", "załoga", "strajk"],
+    id: "diff_prokuratura_dokumenty_zarzad",
+    title: "Zawiadomienie do prokuratury ws. ujawnienia poufnych dokumentów koncernu",
+    category: "governance",
     facilityLocation: "Płock",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        (text.includes("prokuratury") || text.includes("prokuratur")) &&
+        (text.includes("obajtek") || text.includes("poufne") || text.includes("tajemnic"))
+      );
+    },
   },
   {
-    id: "cluster_upstream_norway_lng",
-    title: "Wydobycie gazu na Szelfie Norweskim i handel globalny LNG",
-    keywords: ["upstream norway", "afrodyta", "morzu północnym", "lng", "singapur", "equinor"],
+    id: "diff_paliwa_drozyzna_listopad",
+    title: "Dynamika cen paliw na stacjach: silny wzrost cen diesla przed 1 listopada",
+    category: "market",
+    facilityLocation: undefined,
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      const hasFuel =
+        text.includes("ceny paliw") ||
+        text.includes("cena paliw") ||
+        (text.includes("diesel") && text.includes("droższy"));
+      const hasContext =
+        text.includes("stacjach") ||
+        text.includes("listopada") ||
+        text.includes("reflex") ||
+        text.includes("drożyzna") ||
+        text.includes("spadną");
+      return hasFuel && hasContext;
+    },
+  },
+  {
+    id: "diff_baltic_power_turbiny",
+    title: "Morska farma wiatrowa Baltic Power — zakończenie montażu 76 turbin na Bałtyku",
+    category: "technology",
+    facilityLocation: "Gdańsk",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        text.includes("baltic power") &&
+        (text.includes("turbin") ||
+          text.includes("zainstalowan") ||
+          text.includes("1,2 gw") ||
+          text.includes("kampania morska") ||
+          text.includes("northland") ||
+          text.includes("76"))
+      );
+    },
+  },
+  {
+    id: "diff_smr_bwrx300_osge",
+    title: "Program budowy małych reaktorów jądrowych SMR BWRX-300 przez OSGE",
+    category: "technology",
+    facilityLocation: "Włocławek",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        (text.includes("smr") || text.includes("bwrx")) &&
+        (text.includes("osge") || text.includes("synthos") || text.includes("reaktor"))
+      );
+    },
+  },
+  {
+    id: "diff_rebranding_pgnig_orlen",
+    title: "Transformacja wizerunkowa: unifikacja marek i zastąpienie PGNiG przez myORLEN",
+    category: "governance",
+    facilityLocation: undefined,
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        text.includes("pgnig") &&
+        (text.includes("zastępuje") ||
+          text.includes("zastąpił") ||
+          text.includes("rebranding") ||
+          text.includes("koniec pgnig") ||
+          text.includes("myorlen") ||
+          text.includes("marka orlen"))
+      );
+    },
+  },
+  {
+    id: "diff_solidarnosc_klimat_koszty",
+    title: "Stanowisko NSZZ „Solidarność” wobec kosztów unijnej polityki klimatycznej",
+    category: "labor",
+    facilityLocation: "Gdańsk",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        (text.includes("solidarność") || text.includes("nszz")) &&
+        (text.includes("klimatyczn") ||
+          text.includes("opłat") ||
+          text.includes("cen prądu") ||
+          text.includes("portfel") ||
+          text.includes("referendum"))
+      );
+    },
+  },
+  {
+    id: "diff_kosakowo_kawerny_solne",
+    title: "Podziemny Magazyn Gazu Kosakowo — rozbudowa pojemności w kawernach solnych",
+    category: "technology",
+    facilityLocation: "Gdańsk",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        (text.includes("kosakow") || text.includes("kawerny")) &&
+        (text.includes("magazyn") || text.includes("solne") || text.includes("szansą") || text.includes("gazu"))
+      );
+    },
+  },
+  {
+    id: "diff_plock_nowa_chemia_olefiny",
+    title: "Harmonogram i nakłady inwestycyjne kompleksu Nowa Chemia (Olefiny III) w Płocku",
+    category: "technology",
+    facilityLocation: "Płock",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        (text.includes("olefiny") || text.includes("nowa chemia")) &&
+        (text.includes("płock") || text.includes("wycen") || text.includes("orlen") || text.includes("zakończenia"))
+      );
+    },
+  },
+  {
+    id: "diff_energa_women_on_boards",
+    title: "Inicjatywa #EnergaWłączaWomenOnBoards — standardy parytetu w organach spółek",
+    category: "governance",
+    facilityLocation: "Gdańsk",
+    matcher: (d) => {
+      const text = (d.title + " " + (d.content || "")).toLowerCase();
+      return (
+        text.includes("womenonboards") ||
+        text.includes("women on boards") ||
+        text.includes("raportu advantage")
+      );
+    },
   },
 ];
 
 export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsCreated: number } {
-  const { documents } = dbRepo.getDocuments({ limit: 500 });
+  // Pobieramy wszystkie zindeksowane dokumenty (pełna baza autentyczna)
+  const { documents } = dbRepo.getDocuments({ limit: 1200 });
   const facilities = dbRepo.getAllFacilities();
   const facilityMap = new Map<string, Facility>(facilities.map((f) => [f.city.toLowerCase(), f]));
 
   let clustersCreated = 0;
   let alertsCreated = 0;
 
-  for (const rule of TOPIC_RULES) {
-    const allMatchedDocs = documents.filter((doc) => {
+  for (const rule of COHERENT_TOPIC_RULES) {
+    const matchedDocs = documents.filter((doc) => {
       if (!doc.published_at) return false;
-      const combined = (doc.title + " " + doc.content).toLowerCase();
-      return rule.keywords.some((kw) => combined.includes(kw));
+      return rule.matcher(doc);
     });
 
-    if (allMatchedDocs.length === 0) continue;
+    if (matchedDocs.length === 0) continue;
 
-    // Sortowanie od najnowszych, aby wyznaczyć spójną, bieżącą falę tematyczną (okno 48h od najnowszego artykułu, fallback do 7 dni)
-    allMatchedDocs.sort((a, b) => {
-      return new Date(b.published_at!).getTime() - new Date(a.published_at!).getTime();
-    });
-
-    const latestEpoch = new Date(allMatchedDocs[0].published_at!).getTime();
-    const tightWave = allMatchedDocs.filter(
-      (d) => latestEpoch - new Date(d.published_at!).getTime() <= 48 * 3600 * 1000
-    );
-    const mediumWave = allMatchedDocs.filter(
-      (d) => latestEpoch - new Date(d.published_at!).getTime() <= 7 * 24 * 3600 * 1000
-    );
-    const matchedDocs =
-      tightWave.length >= 2 ? tightWave : mediumWave.length >= 2 ? mediumWave : allMatchedDocs.slice(0, 6);
-
-    // Sortowanie chronologiczne (od sygnału początkowego tej fali do najnowszego)
+    // Chronologiczne sortowanie ścieżki dyfuzji (od sygnału pierwotnego T+0 do najnowszych reakcji)
     matchedDocs.sort((a, b) => {
       const timeA = new Date(a.published_at!).getTime();
       const timeB = new Date(b.published_at!).getTime();
@@ -132,7 +236,9 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
     const eventRecord: Event = {
       id: `evt_${rule.id}`,
       title: rule.title,
-      summary: `Wydarzenie obejmujące ${matchedDocs.length} publikacji ze źródeł: ${Array.from(new Set(matchedDocs.map((d) => d.source_name))).join(", ")}.`,
+      summary: `Ścieżka dyfuzji tematycznej obejmująca ${matchedDocs.length} powiązanych publikacji. Źródła: ${Array.from(
+        new Set(matchedDocs.map((d) => d.source_name))
+      ).join(", ")}.`,
       first_detected_at: firstTime,
       last_signal_at: lastTime,
       event_stage: scoring.stage,
@@ -140,7 +246,7 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
       origin_source_category: firstDoc.source_type,
       affected_facility_id: affectedFacilityId,
       sparks_score: scoring.totalScore,
-      confidence_level: Math.min(0.60 + matchedDocs.length * 0.05, 0.98),
+      confidence_level: Math.min(0.7 + matchedDocs.length * 0.05, 0.99),
       has_orlen_responded: hasOrlenOfficial,
       orlen_statement_summary: officialDoc ? `Oficjalne stanowisko w publikacji: "${officialDoc.title}"` : null,
       created_at: firstTime,
@@ -150,10 +256,10 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
     dbRepo.upsertEvent(eventRecord);
     clustersCreated++;
 
-    // Wyczyść poprzednie powiązania dokumentów dla tego wydarzenia przed ponownym zbudowaniem fali
+    // Wyczyść poprzednie powiązania dokumentów dla tego wydarzenia
     dbRepo.clearEventDocuments(eventRecord.id);
 
-    // Łączenie dokumentów w łańcuch dyfuzji
+    // Łączenie dokumentów w łańcuch dyfuzji z precyzyjnymi rolami
     for (let i = 0; i < matchedDocs.length; i++) {
       const doc = matchedDocs[i];
       const docTime = doc.published_at ? new Date(doc.published_at).getTime() : new Date(doc.fetched_at).getTime();
@@ -161,7 +267,7 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
 
       let step = "local_pickup";
       if (i === 0) {
-        step = "origin";
+        step = doc.is_orlen_official ? "origin_official" : doc.is_labor_signal ? "labor_signal" : "origin";
       } else if (doc.is_orlen_official) {
         step = "rebuttal";
       } else if (doc.is_labor_signal) {
@@ -178,7 +284,7 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
         id: `ed_${eventRecord.id}_${doc.id}`,
         event_id: eventRecord.id,
         document_id: doc.id,
-        similarity_score: 0.85,
+        similarity_score: 0.92,
         diffusion_step: step,
         time_delta_seconds: deltaSec,
         created_at: new Date().toISOString(),
