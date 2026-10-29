@@ -352,6 +352,13 @@ export const dbRepo = {
     isOrlenOfficial?: boolean;
     isLaborSignal?: boolean;
     facilityLocation?: string;
+    /** Kanał komunikacji w tym samym podziale co strefy na kokpicie. */
+    channel?: "official" | "labor" | "external";
+    /** Nazwa wydawcy zapisana w dokumencie (np. „Bankier.pl”). */
+    sourceName?: string;
+    /** Granice daty publikacji w ISO UTC: od włącznie, do wyłącznie. */
+    publishedFrom?: string;
+    publishedTo?: string;
   } = {}): { documents: Document[]; total: number } {
     const db = getSqliteDb();
     const conditions: string[] = [];
@@ -376,6 +383,25 @@ export const dbRepo = {
     if (filter.facilityLocation) {
       conditions.push("facility_location = ?");
       params.push(filter.facilityLocation);
+    }
+    if (filter.channel === "official") {
+      conditions.push("is_orlen_official = 1");
+    } else if (filter.channel === "labor") {
+      conditions.push("is_orlen_official = 0 AND is_labor_signal = 1");
+    } else if (filter.channel === "external") {
+      conditions.push("is_orlen_official = 0 AND is_labor_signal = 0");
+    }
+    if (filter.sourceName) {
+      conditions.push("source_name = ?");
+      params.push(filter.sourceName);
+    }
+    if (filter.publishedFrom) {
+      conditions.push("published_at >= ?");
+      params.push(filter.publishedFrom);
+    }
+    if (filter.publishedTo) {
+      conditions.push("published_at < ?");
+      params.push(filter.publishedTo);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -623,12 +649,42 @@ export const dbRepo = {
     };
   },
 
+  /** Surowe znaczniki do wykresu rytmu publikacji (bez treści dokumentów). */
+  getPublicationRhythmRows(publishedFrom: string): { published_at: string; is_orlen_official: boolean; is_labor_signal: boolean }[] {
+    const db = getSqliteDb();
+    const rows = db
+      .prepare("SELECT published_at, is_orlen_official, is_labor_signal FROM documents WHERE published_at >= ?")
+      .all(publishedFrom) as { published_at: string; is_orlen_official: number; is_labor_signal: number }[];
+    return rows.map((r) => ({
+      published_at: r.published_at,
+      is_orlen_official: Boolean(r.is_orlen_official),
+      is_labor_signal: Boolean(r.is_labor_signal),
+    }));
+  },
+
+  /** Wydawcy z największą liczbą publikacji od podanej daty. */
+  getTopPublishers(publishedFrom: string, limit: number): { source_name: string; count: number; official: number }[] {
+    const db = getSqliteDb();
+    return db
+      .prepare(`
+        SELECT source_name, COUNT(*) AS count, SUM(is_orlen_official) AS official
+        FROM documents
+        WHERE published_at >= ?
+        GROUP BY source_name
+        ORDER BY count DESC, source_name ASC
+        LIMIT ?
+      `)
+      .all(publishedFrom, limit) as { source_name: string; count: number; official: number }[];
+  },
+
   // Statystyki systemu dla kokpitu
   getDashboardStats() {
     const db = getSqliteDb();
     const totalDocs = (db.prepare("SELECT COUNT(*) as c FROM documents").get() as any).c;
     const officialDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 1").get() as any).c;
     const laborDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_labor_signal = 1").get() as any).c;
+    const laborSignalDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 0 AND is_labor_signal = 1").get() as { c: number }).c;
+    const externalDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_orlen_official = 0 AND is_labor_signal = 0").get() as { c: number }).c;
     const localDocs = (db.prepare("SELECT COUNT(*) as c FROM documents WHERE is_local_signal = 1").get() as any).c;
     const totalEvents = (db.prepare("SELECT COUNT(*) as c FROM events").get() as any).c;
     const activeAlerts = (db.prepare("SELECT COUNT(*) as c FROM alerts WHERE is_active = 1").get() as any).c;
@@ -642,6 +698,8 @@ export const dbRepo = {
       totalDocs,
       officialDocs,
       laborDocs,
+      laborSignalDocs,
+      externalDocs,
       localDocs,
       totalEvents,
       activeAlerts,
