@@ -188,7 +188,7 @@ export function getSqliteDb(): Database.Database {
 }
 
 // Repozytorium pomocnicze
-export const dbRepo = {
+export const sqliteRepo = {
   // Źródła
   getAllSources(): Source[] {
     const db = getSqliteDb();
@@ -819,3 +819,5 @@ export const dbRepo = {
     };
   },
 };
+
+export const dbRepo = sqliteRepo;

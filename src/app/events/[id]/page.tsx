@@ -21,7 +21,7 @@ interface PageProps {
 
 export default async function EventDetailPage({ params }: PageProps) {
   const { id } = await params;
-  const event = dbRepo.getEventById(id);
+  const event = await dbRepo.getEventById(id);
 
   if (!event) {
     notFound();

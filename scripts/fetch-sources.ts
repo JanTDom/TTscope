@@ -14,7 +14,7 @@ async function main() {
     console.log(`[${r.status.toUpperCase()}] ${r.source_name}: znaleziono ${r.items_found}, nowych: ${r.items_new}${r.error ? ` (${r.error})` : ""}`);
   }
 
-  const stats = dbRepo.getDashboardStats();
+  const stats = await dbRepo.getDashboardStats();
   console.log("\n--- Stan Bazy TTscope ---");
   console.log(`Dokumenty łącznie: ${stats.totalDocs}`);
   console.log(`Oficjalne Orlen: ${stats.officialDocs}`);

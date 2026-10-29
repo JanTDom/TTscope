@@ -1,5 +1,5 @@
 import { dbRepo } from "@/lib/db";
-import { GitFork, Clock, ArrowRight, Building2, Radio, Newspaper } from "lucide-react";
+import { GitFork, Clock, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { DiffusionFlowGraph } from "@/components/DiffusionFlowGraph";
 import { formatEventStage, formatPublicationTime } from "@/lib/format/publication";
@@ -19,7 +19,8 @@ interface PageProps {
 
 export default async function DiffusionPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
-  const latestPublished = dbRepo.getDashboardStats().latestPublished || "2026-10-29T14:27:00.000Z";
+  const stats = await dbRepo.getDashboardStats();
+  const latestPublished = stats.latestPublished || "2026-10-29T14:27:00.000Z";
 
   const timeRange = resolveTimeRange(
     {
@@ -30,10 +31,20 @@ export default async function DiffusionPage({ searchParams }: PageProps) {
     latestPublished
   );
 
-  const events = dbRepo.getAllEvents({
+  const rawEvents = await dbRepo.getAllEvents({
     from: timeRange.fromIso,
     to: timeRange.toIso,
   });
+
+  const eventsWithDetails = await Promise.all(
+    rawEvents.map(async (evt) => {
+      const details = await dbRepo.getEventById(evt.id);
+      return {
+        ...evt,
+        documents: details?.documents || [],
+      };
+    })
+  );
 
   return (
     <div className="space-y-6">
@@ -57,13 +68,13 @@ export default async function DiffusionPage({ searchParams }: PageProps) {
             currentTo={resolvedParams.to}
           />
           <div className="text-xs text-slate-300 font-mono bg-[#07162c] px-3.5 py-2 rounded-xl border border-cyan-500/30">
-            Ścieżek w oknie: <strong className="text-cyan-300">{events.length}</strong>
+            Ścieżek w oknie: <strong className="text-cyan-300">{eventsWithDetails.length}</strong>
           </div>
         </div>
       </div>
 
       {/* Lista łańcuchów dyfuzji */}
-      {events.length === 0 ? (
+      {eventsWithDetails.length === 0 ? (
         <div className="p-12 text-center bg-surface rounded-xl border border-surface-border space-y-2">
           <div className="text-sm font-medium text-slate-200">Brak zarejestrowanych ścieżek dyfuzji w wybranym przedziale czasu</div>
           <p className="text-xs text-slate-400">
@@ -72,9 +83,8 @@ export default async function DiffusionPage({ searchParams }: PageProps) {
         </div>
       ) : (
         <div className="space-y-6">
-          {events.map((evt) => {
-            const eventDetails = dbRepo.getEventById(evt.id);
-            const docs = eventDetails?.documents || [];
+          {eventsWithDetails.map((evt) => {
+            const docs = evt.documents;
 
             return (
               <div

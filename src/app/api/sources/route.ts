@@ -6,9 +6,11 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const sources = dbRepo.getAllSources();
-    const connectors = dbRepo.getSourceConnectors();
-    const auditLogs = dbRepo.getAuditLogs(50);
+    const [sources, connectors, auditLogs] = await Promise.all([
+      dbRepo.getAllSources(),
+      dbRepo.getSourceConnectors(),
+      dbRepo.getAuditLogs(50),
+    ]);
 
     return NextResponse.json({
       ok: true,

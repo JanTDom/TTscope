@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const to = searchParams.get("to") || undefined;
 
     const timeRange = resolveTimeRange({ preset, from, to });
-    const events = dbRepo.getAllEvents({
+    const events = await dbRepo.getAllEvents({
       from: timeRange.fromIso,
       to: timeRange.toIso,
     });

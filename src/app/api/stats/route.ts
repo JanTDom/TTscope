@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const to = searchParams.get("to") || undefined;
 
     const timeRange = resolveTimeRange({ preset, from, to });
-    const stats = dbRepo.getDashboardStats({
+    const stats = await dbRepo.getDashboardStats({
       from: timeRange.fromIso,
       to: timeRange.toIso,
     });

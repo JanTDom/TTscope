@@ -57,7 +57,7 @@ export async function analyzeDocumentWithGemini(
 
   // Sprawdzenie cache w bazie (chyba że wymuszono ponowną analizę)
   if (!forceRefresh) {
-    const existingRun = dbRepo.getLatestAiRunForDocument(doc.id);
+    const existingRun = await dbRepo.getLatestAiRunForDocument(doc.id);
     if (existingRun && existingRun.status === "success" && existingRun.validated_response) {
       return {
         ok: true,
@@ -147,7 +147,7 @@ ${doc.content.slice(0, 4000)}
       const errText = await response.text();
       const errMsg = `Błąd HTTP Gemini API (${response.status}): ${errText.slice(0, 300)}`;
 
-      dbRepo.recordAiRun({
+      await dbRepo.recordAiRun({
         id: `airun_${Date.now()}`,
         document_id: doc.id,
         model_name: config.model,
@@ -188,7 +188,7 @@ ${doc.content.slice(0, 4000)}
     if (!zodResult.success) {
       const validationErr = `Błąd walidacji schematu JSON Gemini: ${zodResult.error.message}`;
 
-      dbRepo.recordAiRun({
+      await dbRepo.recordAiRun({
         id: `airun_${Date.now()}`,
         document_id: doc.id,
         model_name: config.model,
@@ -217,7 +217,7 @@ ${doc.content.slice(0, 4000)}
     const groundingCheck = verifyGrounding(zodResult.data, combinedSource);
 
     // Zapis w rejestrze AI
-    dbRepo.recordAiRun({
+    await dbRepo.recordAiRun({
       id: `airun_${Date.now()}`,
       document_id: doc.id,
       model_name: config.model,

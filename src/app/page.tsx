@@ -45,7 +45,8 @@ interface PageProps {
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
-  const latestPublished = dbRepo.getDashboardStats().latestPublished || "2026-10-29T14:27:00.000Z";
+  const initialStats = await dbRepo.getDashboardStats();
+  const latestPublished = initialStats.latestPublished || "2026-10-29T14:27:00.000Z";
 
   // Globalny kalkulator okna czasowego (1h, 8h, 24h, 7d, 30d, custom)
   const timeRange = resolveTimeRange(
@@ -58,26 +59,28 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   );
 
   // Pobranie danych ściśle poddanych wybranemu oknu czasowemu
-  const stats = dbRepo.getDashboardStats({
-    from: timeRange.fromIso,
-    to: timeRange.toIso,
-  });
-
-  const events = dbRepo.getAllEvents({
-    from: timeRange.fromIso,
-    to: timeRange.toIso,
-  });
-
-  const alerts = dbRepo.getActiveAlerts({
-    from: timeRange.fromIso,
-    to: timeRange.toIso,
-  });
-
-  const { documents: recentDocsInWindow } = dbRepo.getDocuments({
-    publishedFrom: timeRange.fromIso,
-    publishedTo: timeRange.toIso,
-    limit: 250,
-  });
+  const [stats, events, alerts, { documents: recentDocsInWindow }, rhythmRows, topPublishers] =
+    await Promise.all([
+      dbRepo.getDashboardStats({
+        from: timeRange.fromIso,
+        to: timeRange.toIso,
+      }),
+      dbRepo.getAllEvents({
+        from: timeRange.fromIso,
+        to: timeRange.toIso,
+      }),
+      dbRepo.getActiveAlerts({
+        from: timeRange.fromIso,
+        to: timeRange.toIso,
+      }),
+      dbRepo.getDocuments({
+        publishedFrom: timeRange.fromIso,
+        publishedTo: timeRange.toIso,
+        limit: 250,
+      }),
+      dbRepo.getPublicationRhythmRows(timeRange.fromIso, timeRange.toIso),
+      dbRepo.getTopPublishers(timeRange.fromIso, 6, timeRange.toIso),
+    ]);
 
   const officialDocs = recentDocsInWindow.filter((d) => d.is_orlen_official);
   const laborDocs = recentDocsInWindow.filter((d) => d.is_labor_signal && !d.is_orlen_official);
@@ -85,7 +88,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   // Wykres rytmu publikacji: godzinowy dla okien <= 24h, dobowy dla okien dłuższych
   const isHourly = timeRange.preset === "1h" || timeRange.preset === "8h" || timeRange.preset === "24h";
-  const rhythmRows = dbRepo.getPublicationRhythmRows(timeRange.fromIso, timeRange.toIso);
 
   let rhythmBuckets;
   if (isHourly) {
@@ -101,8 +103,6 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     rhythmBuckets = buildDailyRhythm(rhythmRows, dayKeys);
   }
 
-  const topPublishers = dbRepo.getTopPublishers(timeRange.fromIso, 6, timeRange.toIso);
-
   // Przebiegi sparkline
   const officialSeries = rhythmBuckets.map((b) => b.official);
   const laborSeries = rhythmBuckets.map((b) => b.labor);
@@ -111,7 +111,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   // Wyróżnione wydarzenie
   const featuredEventMeta = events.find((e) => e.id === "evt_cluster_upstream_norway_lng") || events[0];
-  const featuredEvent = featuredEventMeta ? dbRepo.getEventById(featuredEventMeta.id) : null;
+  const featuredEvent = featuredEventMeta ? await dbRepo.getEventById(featuredEventMeta.id) : null;
 
   return (
     <div className="space-y-8">

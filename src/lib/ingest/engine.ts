@@ -118,7 +118,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
 
     if (!keyVal) {
       const errMsg = `Źródło wymaga klucza API (${keyEnvName}), który nie został skonfigurowany w zmiennych środowiskowych.`;
-      dbRepo.upsertSourceConnector({
+      await dbRepo.upsertSourceConnector({
         id: `conn_${source.id}`,
         source_id: source.id,
         connector_type: source.category === "social_media" ? "api_connector" : "unknown",
@@ -127,7 +127,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
         last_error: errMsg,
       });
 
-      dbRepo.recordFetchRun({
+      await dbRepo.recordFetchRun({
         id: runId,
         source_id: source.id,
         started_at: startedAt,
@@ -189,12 +189,12 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
           updated_at: new Date().toISOString(),
         };
 
-        const { isNew } = dbRepo.insertDocument(doc);
+        const { isNew } = await dbRepo.insertDocument(doc);
         if (isNew) itemsNew++;
       }
 
       const finishedAt = new Date().toISOString();
-      dbRepo.recordFetchRun({
+      await dbRepo.recordFetchRun({
         id: runId,
         source_id: source.id,
         started_at: startedAt,
@@ -207,7 +207,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
         created_at: startedAt,
       });
 
-      dbRepo.upsertSourceConnector({
+      await dbRepo.upsertSourceConnector({
         id: `conn_${source.id}`,
         source_id: source.id,
         connector_type: "html_cheerio",
@@ -257,7 +257,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
 
     if (!response.ok) {
       const errMsg = `Błąd HTTP ${response.status} (${response.statusText}) podczas pobierania ze źródła`;
-      dbRepo.recordFetchRun({
+      await dbRepo.recordFetchRun({
         id: runId,
         source_id: source.id,
         started_at: startedAt,
@@ -270,7 +270,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
         created_at: startedAt,
       });
 
-      dbRepo.upsertSourceConnector({
+      await dbRepo.upsertSourceConnector({
         id: `conn_${source.id}`,
         source_id: source.id,
         connector_type: "rss_atom",
@@ -346,7 +346,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
         updated_at: new Date().toISOString(),
       };
 
-      const { isNew } = dbRepo.insertDocument(doc);
+      const { isNew } = await dbRepo.insertDocument(doc);
       if (isNew) {
         itemsNew++;
       }
@@ -354,7 +354,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
 
     const finishedAt = new Date().toISOString();
 
-    dbRepo.recordFetchRun({
+    await dbRepo.recordFetchRun({
       id: runId,
       source_id: source.id,
       started_at: startedAt,
@@ -368,7 +368,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
       created_at: startedAt,
     });
 
-    dbRepo.upsertSourceConnector({
+    await dbRepo.upsertSourceConnector({
       id: `conn_${source.id}`,
       source_id: source.id,
       connector_type: "rss_atom",
@@ -389,7 +389,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
     const errMsg = err instanceof Error ? err.message : "Nieznany błąd sieci lub parsowania";
     const finishedAt = new Date().toISOString();
 
-    dbRepo.recordFetchRun({
+    await dbRepo.recordFetchRun({
       id: runId,
       source_id: source.id,
       started_at: startedAt,
@@ -402,7 +402,7 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
       created_at: startedAt,
     });
 
-    dbRepo.upsertSourceConnector({
+    await dbRepo.upsertSourceConnector({
       id: `conn_${source.id}`,
       source_id: source.id,
       connector_type: "rss_atom",
@@ -423,7 +423,8 @@ export async function ingestSource(source: Source): Promise<IngestRunResult> {
 }
 
 export async function ingestAllActiveSources(): Promise<IngestRunResult[]> {
-  const sources = dbRepo.getAllSources().filter((s) => s.is_active);
+  const allSources = await dbRepo.getAllSources();
+  const sources = allSources.filter((s) => s.is_active);
   const results: IngestRunResult[] = [];
 
   for (const s of sources) {

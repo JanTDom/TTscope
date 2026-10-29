@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     const limit = Number(searchParams.get("limit")) || 50;
     const offset = Number(searchParams.get("offset")) || 0;
 
-    const result = dbRepo.getDocuments({
+    const result = await dbRepo.getDocuments({
       query,
       sourceType,
       facilityLocation,

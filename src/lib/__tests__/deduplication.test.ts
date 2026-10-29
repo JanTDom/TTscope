@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
-import { dbRepo } from "../db";
+import { sqliteRepo } from "../db/sqlite";
 import type { Document } from "../db/types";
 
 describe("TTscope Deduplikacja i Wersjonowanie", () => {
@@ -18,7 +18,7 @@ describe("TTscope Deduplikacja i Wersjonowanie", () => {
     expect(hash1).toBe(hash2);
   });
 
-  it("powinien unikać duplikatów przy wstawianiu identycznego dokumentu", () => {
+  it("powinien unikać duplikatów przy wstawianiu identycznego dokumentu", async () => {
     const testDoc: Document = {
       id: "doc_test_dedup_1",
       title: "Testowy Komunikat Orlenu",
@@ -38,8 +38,8 @@ describe("TTscope Deduplikacja i Wersjonowanie", () => {
       updated_at: new Date().toISOString(),
     };
 
-    const firstInsert = dbRepo.insertDocument(testDoc);
-    const secondInsert = dbRepo.insertDocument(testDoc);
+    const firstInsert = sqliteRepo.insertDocument(testDoc);
+    const secondInsert = sqliteRepo.insertDocument(testDoc);
 
     expect(secondInsert.isNew).toBe(false);
   });

@@ -18,7 +18,8 @@ interface PageProps {
 
 export default async function ReportsPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
-  const latestPublished = dbRepo.getDashboardStats().latestPublished || "2026-10-29T14:27:00.000Z";
+  const initialStats = await dbRepo.getDashboardStats();
+  const latestPublished = initialStats.latestPublished || "2026-10-29T14:27:00.000Z";
 
   const timeRange = resolveTimeRange(
     {
@@ -29,26 +30,25 @@ export default async function ReportsPage({ searchParams }: PageProps) {
     latestPublished
   );
 
-  const stats = dbRepo.getDashboardStats({
-    from: timeRange.fromIso,
-    to: timeRange.toIso,
-  });
-
-  const events = dbRepo.getAllEvents({
-    from: timeRange.fromIso,
-    to: timeRange.toIso,
-  });
-
-  const alerts = dbRepo.getActiveAlerts({
-    from: timeRange.fromIso,
-    to: timeRange.toIso,
-  });
-
-  const { documents: recentDocs } = dbRepo.getDocuments({
-    publishedFrom: timeRange.fromIso,
-    publishedTo: timeRange.toIso,
-    limit: 20,
-  });
+  const [stats, events, alerts, { documents: recentDocs }] = await Promise.all([
+    dbRepo.getDashboardStats({
+      from: timeRange.fromIso,
+      to: timeRange.toIso,
+    }),
+    dbRepo.getAllEvents({
+      from: timeRange.fromIso,
+      to: timeRange.toIso,
+    }),
+    dbRepo.getActiveAlerts({
+      from: timeRange.fromIso,
+      to: timeRange.toIso,
+    }),
+    dbRepo.getDocuments({
+      publishedFrom: timeRange.fromIso,
+      publishedTo: timeRange.toIso,
+      limit: 20,
+    }),
+  ]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">

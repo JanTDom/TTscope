@@ -189,10 +189,12 @@ export const COHERENT_TOPIC_RULES: CoherentTopicRule[] = [
   },
 ];
 
-export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsCreated: number } {
+export async function clusterDocumentsIntoEvents(): Promise<{ clustersCreated: number; alertsCreated: number }> {
   // Pobieramy wszystkie zindeksowane dokumenty (pełna baza autentyczna)
-  const { documents } = dbRepo.getDocuments({ limit: 1200 });
-  const facilities = dbRepo.getAllFacilities();
+  const [{ documents }, facilities] = await Promise.all([
+    dbRepo.getDocuments({ limit: 1200 }),
+    dbRepo.getAllFacilities(),
+  ]);
   const facilityMap = new Map<string, Facility>(facilities.map((f) => [f.city.toLowerCase(), f]));
 
   let clustersCreated = 0;
@@ -253,11 +255,11 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
       updated_at: new Date().toISOString(),
     };
 
-    dbRepo.upsertEvent(eventRecord);
+    await dbRepo.upsertEvent(eventRecord);
     clustersCreated++;
 
     // Wyczyść poprzednie powiązania dokumentów dla tego wydarzenia
-    dbRepo.clearEventDocuments(eventRecord.id);
+    await dbRepo.clearEventDocuments(eventRecord.id);
 
     // Łączenie dokumentów w łańcuch dyfuzji z precyzyjnymi rolami
     for (let i = 0; i < matchedDocs.length; i++) {
@@ -280,7 +282,7 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
         step = "social_amplification";
       }
 
-      dbRepo.linkDocumentToEvent({
+      await dbRepo.linkDocumentToEvent({
         id: `ed_${eventRecord.id}_${doc.id}`,
         event_id: eventRecord.id,
         document_id: doc.id,
@@ -293,7 +295,7 @@ export function clusterDocumentsIntoEvents(): { clustersCreated: number; alertsC
 
     // Automatyczny alert przy istotnym iskrzeniu
     if (scoring.totalScore >= 40.0) {
-      dbRepo.insertAlert({
+      await dbRepo.insertAlert({
         id: `alt_${eventRecord.id}`,
         event_id: eventRecord.id,
         document_id: firstDoc.id,

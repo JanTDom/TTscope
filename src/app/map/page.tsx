@@ -18,7 +18,8 @@ interface PageProps {
 
 export default async function MapPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
-  const latestPublished = dbRepo.getDashboardStats().latestPublished || "2026-10-29T14:27:00.000Z";
+  const stats = await dbRepo.getDashboardStats();
+  const latestPublished = stats.latestPublished || "2026-10-29T14:27:00.000Z";
 
   const timeRange = resolveTimeRange(
     {
@@ -29,12 +30,14 @@ export default async function MapPage({ searchParams }: PageProps) {
     latestPublished
   );
 
-  const facilities = dbRepo.getAllFacilities();
-  const { documents } = dbRepo.getDocuments({
-    publishedFrom: timeRange.fromIso,
-    publishedTo: timeRange.toIso,
-    limit: 500,
-  });
+  const [facilities, { documents }] = await Promise.all([
+    dbRepo.getAllFacilities(),
+    dbRepo.getDocuments({
+      publishedFrom: timeRange.fromIso,
+      publishedTo: timeRange.toIso,
+      limit: 500,
+    }),
+  ]);
 
   // Zliczanie publikacji przypisanych do zakładu w danym oknie czasowym
   const facilityMentions: Record<string, number> = {};

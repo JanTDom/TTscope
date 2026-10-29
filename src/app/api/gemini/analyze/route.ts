@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Brak parametru documentId." }, { status: 400 });
     }
 
-    const doc = dbRepo.getDocumentById(documentId);
+    const doc = await dbRepo.getDocumentById(documentId);
     if (!doc) {
       return NextResponse.json({ ok: false, error: "Dokument nie istnieje w bazie." }, { status: 404 });
     }

@@ -17,10 +17,10 @@ export async function POST() {
     const ingestResults = await ingestAllActiveSources();
 
     // 3. Klastrowanie
-    const clusterResults = clusterDocumentsIntoEvents();
+    const clusterResults = await clusterDocumentsIntoEvents();
 
     // 4. Log do audit
-    dbRepo.logAudit({
+    await dbRepo.logAudit({
       id: `audit_${Date.now()}`,
       action_type: "manual_ingest_trigger",
       entity_type: "system",
@@ -28,7 +28,7 @@ export async function POST() {
       created_at: new Date().toISOString(),
     });
 
-    const stats = dbRepo.getDashboardStats();
+    const stats = await dbRepo.getDashboardStats();
 
     return NextResponse.json({
       ok: true,

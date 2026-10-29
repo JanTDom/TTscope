@@ -76,7 +76,7 @@ export async function executeGeminiFunction(
   args: Record<string, any>
 ): Promise<any> {
   // Rejestracja w audit logu
-  dbRepo.logAudit({
+  await dbRepo.logAudit({
     id: `audit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     action_type: "gemini_function_call",
     entity_type: "function",
@@ -87,7 +87,7 @@ export async function executeGeminiFunction(
 
   switch (name) {
     case "search_documents": {
-      const result = dbRepo.getDocuments({
+      const result = await dbRepo.getDocuments({
         query: args.query,
         facilityLocation: args.facilityLocation,
         isOrlenOfficial: args.isOrlenOfficial,
@@ -112,13 +112,13 @@ export async function executeGeminiFunction(
     }
 
     case "get_document": {
-      const doc = dbRepo.getDocumentById(args.id);
+      const doc = await dbRepo.getDocumentById(args.id);
       if (!doc) return { error: `Dokument o ID ${args.id} nie został odnaleziony w bazie.` };
       return doc;
     }
 
     case "search_events": {
-      const events = dbRepo.getAllEvents();
+      const events = await dbRepo.getAllEvents();
       return {
         total_events: events.length,
         events: events.map((e) => ({
@@ -133,7 +133,7 @@ export async function executeGeminiFunction(
     }
 
     case "get_event_timeline": {
-      const eventDetails = dbRepo.getEventById(args.eventId);
+      const eventDetails = await dbRepo.getEventById(args.eventId);
       if (!eventDetails) return { error: `Wydarzenie o ID ${args.eventId} nie istnieje.` };
       return {
         event_title: eventDetails.title,
@@ -149,8 +149,10 @@ export async function executeGeminiFunction(
     }
 
     case "get_source_health": {
-      const stats = dbRepo.getDashboardStats();
-      const sources = dbRepo.getAllSources();
+      const [stats, sources] = await Promise.all([
+        dbRepo.getDashboardStats(),
+        dbRepo.getAllSources(),
+      ]);
       return {
         total_sources: stats.totalSources,
         active_sources: stats.activeSources,
@@ -165,7 +167,7 @@ export async function executeGeminiFunction(
     }
 
     case "get_location_signals": {
-      const { documents } = dbRepo.getDocuments({
+      const { documents } = await dbRepo.getDocuments({
         facilityLocation: args.location,
         limit: 15,
       });

@@ -1,8 +1,9 @@
-import { dbRepo, getSqliteDb } from "./sqlite";
+import { postgresRepo } from "./postgres";
+
+export const dbRepo = postgresRepo;
 
 export function getDb() {
-  return getSqliteDb();
+  return null;
 }
 
-export { dbRepo };
 export * from "./types";

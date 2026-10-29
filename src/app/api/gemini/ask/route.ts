@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     // 1. Obsługa braku klucza API
     if (!config.apiKey) {
       // Wykonujemy zapytanie heurystyczne do bazy jako fallback
-      const searchRes = dbRepo.getDocuments({ query: question.trim(), limit: 5 });
+      const searchRes = await dbRepo.getDocuments({ query: question.trim(), limit: 5 });
       return NextResponse.json({
         ok: true,
         aiEnabled: false,

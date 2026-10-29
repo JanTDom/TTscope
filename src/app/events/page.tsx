@@ -29,7 +29,8 @@ interface PageProps {
 
 export default async function EventsPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
-  const latestPublished = dbRepo.getDashboardStats().latestPublished || "2026-10-29T14:27:00.000Z";
+  const stats = await dbRepo.getDashboardStats();
+  const latestPublished = stats.latestPublished || "2026-10-29T14:27:00.000Z";
 
   const timeRange = resolveTimeRange(
     {
@@ -40,10 +41,20 @@ export default async function EventsPage({ searchParams }: PageProps) {
     latestPublished
   );
 
-  const events = dbRepo.getAllEvents({
+  const rawEvents = await dbRepo.getAllEvents({
     from: timeRange.fromIso,
     to: timeRange.toIso,
   });
+
+  const events = await Promise.all(
+    rawEvents.map(async (evt) => {
+      const eventDetails = await dbRepo.getEventById(evt.id);
+      return {
+        ...evt,
+        docsCount: eventDetails?.documents.length || 0,
+      };
+    })
+  );
 
   return (
     <div className="space-y-6">
@@ -82,8 +93,7 @@ export default async function EventsPage({ searchParams }: PageProps) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {events.map((evt) => {
-            const eventDetails = dbRepo.getEventById(evt.id);
-            const docsCount = eventDetails?.documents.length || 0;
+            const docsCount = evt.docsCount;
 
             return (
               <div

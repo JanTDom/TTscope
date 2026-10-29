@@ -6,11 +6,13 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    const stats = dbRepo.getDashboardStats();
-    const events = dbRepo.getAllEvents();
-    const alerts = dbRepo.getActiveAlerts();
-    const { documents: recentDocs } = dbRepo.getDocuments({ limit: 20 });
-    const facilities = dbRepo.getAllFacilities();
+    const [stats, events, alerts, { documents: recentDocs }, facilities] = await Promise.all([
+      dbRepo.getDashboardStats(),
+      dbRepo.getAllEvents(),
+      dbRepo.getActiveAlerts(),
+      dbRepo.getDocuments({ limit: 20 }),
+      dbRepo.getAllFacilities(),
+    ]);
 
     const report = {
       generated_at: new Date().toISOString(),

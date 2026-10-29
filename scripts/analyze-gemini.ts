@@ -16,7 +16,7 @@ import { analyzeDocumentWithGemini } from "../src/lib/gemini/client";
 async function run() {
   console.log("=== TTscope: Rzeczywista Analiza Gemini API na Prawdziwym Dokumencie ===");
 
-  const { documents } = dbRepo.getDocuments({ limit: 1 });
+  const { documents } = await dbRepo.getDocuments({ limit: 1 });
   if (documents.length === 0) {
     console.error("Brak dokumentów w bazie do analizy. Uruchom najpierw scripts/fetch-sources.ts");
     process.exit(1);
@@ -61,7 +61,7 @@ async function run() {
   process.env.GEMINI_API_KEY = origKey;
 
   // 3. Sprawdzenie rekordu w bazie
-  const savedRun = dbRepo.getLatestAiRunForDocument(doc.id);
+  const savedRun = await dbRepo.getLatestAiRunForDocument(doc.id);
   console.log("\n3. Sprawdzenie zapisu w bazie danych (ai_analysis_runs):");
   console.log(`Zapisano w bazie: ID=${savedRun?.id}, Model=${savedRun?.model_name}, Status=${savedRun?.status}`);
 }

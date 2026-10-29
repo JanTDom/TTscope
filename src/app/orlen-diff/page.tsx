@@ -18,7 +18,8 @@ interface PageProps {
 
 export default async function OrlenDiffPage({ searchParams }: PageProps) {
   const resolvedParams = await searchParams;
-  const latestPublished = dbRepo.getDashboardStats().latestPublished || "2026-10-29T14:27:00.000Z";
+  const stats = await dbRepo.getDashboardStats();
+  const latestPublished = stats.latestPublished || "2026-10-29T14:27:00.000Z";
 
   const timeRange = resolveTimeRange(
     {
@@ -29,7 +30,7 @@ export default async function OrlenDiffPage({ searchParams }: PageProps) {
     latestPublished
   );
 
-  const { documents } = dbRepo.getDocuments({
+  const { documents } = await dbRepo.getDocuments({
     publishedFrom: timeRange.fromIso,
     publishedTo: timeRange.toIso,
     limit: 300,

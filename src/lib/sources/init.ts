@@ -1,10 +1,10 @@
 import { dbRepo } from "../db";
 import { SOURCES_REGISTRY } from "./registry";
 
-export function initSourcesRegistry() {
+export async function initSourcesRegistry() {
   for (const item of SOURCES_REGISTRY) {
-    dbRepo.upsertSource(item.source);
-    dbRepo.upsertSourceConnector({
+    await dbRepo.upsertSource(item.source);
+    await dbRepo.upsertSourceConnector({
       ...item.connector,
       source_id: item.source.id,
     });
